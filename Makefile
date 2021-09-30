@@ -1,7 +1,7 @@
 CC=cc
 MYCFLAGS=
 CFLAGS=-Wall -Wextra -std=c99 -g -march=native -flto $(MYCFLAGS)
-MYLDFLAGS= -O3
+MYLDFLAGS= -Ofast
 LDFLAGS=-lm -lgomp $(MYLDFLAGS)
 
 TARGETS= main

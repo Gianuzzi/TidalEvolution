@@ -104,9 +104,9 @@ int main ()
     // Run conditions
     t0       = DAY2YR(0.0);
     dt       = DAY2YR(1e5);
-    tf       = DAY2YR(5e13);
-    n_points = 1000;
-    t0_old   = 1.;
+    tf       = DAY2YR(1e15);
+    n_points = 2000;
+    t0_old   = 0.;
 
     n_iter = (int)((tf - t0) / dt);
     Logt   = CteLogt(tf - t0, n_points);
