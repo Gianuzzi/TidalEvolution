@@ -3,6 +3,7 @@
 # include <math.h>
 # include <omp.h>
 # include <string.h>
+# include <unistd.h>
 # include "allvars.h"
 # include "init.h"
 # include "integrators.h"
@@ -16,6 +17,7 @@ void test_step (
     integrator integ
     )
 {
+    derydt = &dydt;
     for (unsigned int j = 0; j < N; j++)
     {
         y[j] = integ (t, y, dt, j, derydt);
@@ -58,9 +60,9 @@ void tidal_step (
 
     y[0] = a1n;
     y[1] = e1n;
-    y[2] = fmod(s1n, TWO_PI);
+    y[2] = fmod (s1n, TWO_PI);
     y[3] = o1n;
-    y[4] = fmod(s0n, TWO_PI);
+    y[4] = fmod (s0n, TWO_PI);
     y[5] = o0n;
 }
 
@@ -73,58 +75,109 @@ int main ()
     m0      = 1.0;
     spin0   = TWO_PI / 28.;
     oblic0  = 0.0;
-    radius0 = KM2AU(695700.);
+    radius0 = KM2AU (695700.);
     alpha0  = 0.4;
     q0      = 1.e6;
 
     /// Object 1
-    m1      = MJ2MS(1.);
+    m1      = MJ2MS (1.);
     a1      = 0.05;
     e1      = 0.1;
     spin1   = TWO_PI / 1.;
     oblic1  = 0.0;
-    radius1 = KM2AU(69911.);
+    radius1 = KM2AU (69911.);
     alpha1  = 0.4;
     q1      = 1.e5;
 
     /// Calculated
-    n1    = ni(a1);
-    k2dt0 = k2dti(q0, n1);
-    k2dt1 = k2dti(q1, n1);
-    k0    = Ki(m1, radius0, k2dt0);
-    c0    = Ci(m0, radius0, alpha0);
-    k1    = Ki(m0, radius1, k2dt1);
-    c1    = Ci(m1, radius1, alpha1);
+    n1    = ni (a1);
+    k2dt0 = k2dti (q0, n1);
+    k2dt1 = k2dti (q1, n1);
+    k0    = Ki (m1, radius0, k2dt0);
+    c0    = Ci (m0, radius0, alpha0);
+    k1    = Ki (m0, radius1, k2dt1);
+    c1    = Ci (m1, radius1, alpha1);
 
     // Run conditions
     t0       = 0.;
-    dt       = 1e4;
-    tf       = 5e10;
+    dt       = YR2DAY (25.);
+    tf       = YR2DAY (2.1e9);
     n_points = 2000;
 
-    n_iter = (int)((tf - t0) / dt);
-    Logt   = CteLogt(tf - t0, n_points);
-    t0_old = t0 + Logt;
-    printf("Approximate Iterations: %i\n", n_iter);
+    // Define Equations
+    integ   = &runge_kutta4;
+    deriva1 = &dadt;
+    derive1 = &dedt;
+    derivs0 = &dspin0dt;
+    derivs1 = &dspin1dt;
+    derivo0 = &depsilon0dt;
+    derivo1 = &depsilon1dt;
 
-    // RUN
+    // Init memory
     y = malloc (y_size);
-    init_params (y);
-    print_n (y, -1, t0);
 
-    integrator integ = &runge_kutta4;
+    // Define output
+    output  = "Salida.txt";
+    strcpy (mode, "w");
 
-    fp = fopen ("Salida.txt", "w");
-    fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
-             y[0], y[1], y[2], y[3], y[4], y[5], t0
-            );
+    if (access (output, F_OK) == 0)
+    {
+        printf ("File %s already exists.\n", output);
+        printf ("Enter an option:\n");
+        printf ("\t   0: Rewrite file.\n");
+        printf ("\t   1: Continue the run, using this physical parameters.\n");
+        printf ("\t >=2: Exit.\n");
+        scanf ("%i", &selection);
+        switch (selection)
+        {
+        case 0:
+            printf ("Rewriting...\n");
+            break;
         
+        case 1:
+            printf ("Reading parameters from file...\n");
+            t0 = set_from_file(output);
+            strcpy (mode, "a");
+            break;
+        
+        default:
+            printf ("Exiting.\n");
+            exit (0);
+            break;
+        }
+    }
+
+    fp = fopen (output, mode);
+    
+    /// Set and Print parameters array
+    init_params (y, a1, e1, spin1, oblic1, spin0, oblic0);
+    print_n (y, -1, t0);
+    if (strcmp(mode, "w"))
+    {
+        fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
+            y[0], y[1], y[2], y[3], y[4], y[5], t0
+        );
+    }  
+
+    /// LOOP conditions
+    if (tf < t0)
+    {
+        printf ("Final time %f [days] already reached.\n", tf);
+        printf ("Exiting.\n");
+        exit (0);
+    }
+    n_iter = (int)((tf - t0) / dt);
+    
+    Logt   = CteLogt (tf - t0, n_points);
+    t0_old = t0 + Logt;
+    printf("Approximate Iterations: %i\n", n_iter);        
+    
+    /// LOOP
     for (unsigned int i = 0; i < n_iter; i++)
     {
         t0 = t0 + dt;
         tidal_step (t0, y, dt, integ);
-        // if (t0 >= t0_old)
-        if ((i % 1000) == 0)
+        if (t0 >= t0_old)
         {
             if (isnan (y[0]))
             {
@@ -133,20 +186,20 @@ int main ()
                 break;
             }
             t0_old = t0_old * Logt;
-            printf("Iteration: %i\n", i);
+            printf ("Iteration: %i\n", i);
             print_n (y, -1, t0);
             fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
                         y[0], y[1], y[2], y[3], y[4], y[5], t0
-                    );
+            );
         }        
     }
 
-    fclose(fp);    
+    fclose (fp);    
     
     free (y);
 
     elapsed = omp_get_wtime () - start_time;
-    printf("Total running time: %f [seg]\n.", elapsed);
+    printf ("Total running time: %f [seg]\n.", elapsed);
 return 0;
 }
 

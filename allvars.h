@@ -1,6 +1,6 @@
 //---------------------- Constants ---------------------------------
 // INTEGRATION
-static const unsigned int N = 6; // Amount of parameters
+static const unsigned int N = 6;                 // Amount of parameters
 static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 
 // Functions
@@ -8,8 +8,8 @@ static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 
 // Physics
 // # define G 39.478 // AU³ yr⁻² Ms⁻¹
-# define PI 3.1415927 // Pi
-# define TWO_PI 6.2831853 // Two Pi
+# define PI 3.1415927            // Pi
+# define TWO_PI 6.2831853        // Two Pi
 # define G SQUARE(0.01720209895) // AU³ days⁻² Ms⁻¹
 # define KM2AU(x) (x / 1.496E8)
 # define MJ2MS(x) (x * 9.54e-4)
@@ -20,33 +20,43 @@ static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 
 // Implicit integrations methods
 # define MAX_ITER 10000 // Max iter
-# define MIN_ERR 1e-9 // Min err
+# define MIN_ERR 1e-9   // Min err
 
 // User defined constants
 unsigned int n_iter; // Amount of iterations
-static double dt; // TimeStep [days]
-static double t0; // Initial itegration time [days]
-static double tf; // Final itegration time  [days]
-static double Logt; // Cte for ratio (t_[i+1] / t_[i])
+static double dt;    // TimeStep [days]
+static double t0;    // Initial itegration time [days]
+static double tf;    // Final itegration time  [days]
+static double Logt;  // Cte for ratio (t_[i+1] / t_[i])
 static int n_points; // Amount of total output points
+static char *output;  // Output file name
 
 # define m1prime (m0 * m1) / (m0 + m1)
-// # define m1prima (Body0.mass*Body1.mass)/(Body0.mass+Body1.mass)
-
-
 
 //---------------------- Dynamics ---------------------------------
 // Time calculations
 double start_time; // Initial cpu time
-double elapsed; // Total cpu time
+double elapsed;    // Total cpu time
 
-FILE *fp; // File with solution array
+FILE *fp;      // File with solution array
+char mode[1];  // File with solution array
+
+//---------------------- Input ---------------------------------
+unsigned int selection; // Dummy int if output file already exists
 
 
 //---------------------- Function types ----------------------------
 typedef double (*derivator)(double, double *);
 typedef double (*integrator)(double, double *, double, int, derivator);
 
+derivator derydt;  // dydt (for testing)
+derivator deriva1; // da1dt
+derivator derive1; // de1dt
+derivator derivs1; // ds1dt
+derivator derivo1; // do1dt
+derivator derivs0; // ds1dt
+derivator derivo0; // do0dt
+integrator integ;  // Integrator used
 
 //---------------------- Objects parametes -------------------------
 
@@ -82,8 +92,8 @@ double c1;       // Moment of inertia
 double q1;       // Tidal dissipation factor
 
 // ---------------------- Run -------------------------
-double *y; // Params pointer [a1, e1, spin1, oblic1, spin0, oblic0]
-double t0_old; // Time checkpoint for logarithmic scale output
+static double *y; // Params pointer [a1, e1, spin1, oblic1, spin0, oblic0]
+static double t0_old; // Time checkpoint for logarithmic scale output
 
 //---------------------------------------------------------------
 
