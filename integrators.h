@@ -100,24 +100,18 @@ extern double ralston (double t, double *y, double dt, int i, derivator dydt)
 extern double runge_kutta4 (double t, double *y, double dt, int i, derivator dydt)
 {
     double rk1, rk2, rk3, rk4;
-    double *y2 = (double*) malloc(y_size); // Aux array 
-    double *y3 = (double*) malloc(y_size); // Aux array 
-    double *y4 = (double*) malloc(y_size); // Aux array
-    memcpy(y2, y, y_size);
-    memcpy(y3, y, y_size);
-    memcpy(y4, y, y_size);
+    double *y1 = (double*) malloc(y_size); // Aux array 
+    memcpy(y1, y, y_size);
 
     rk1 = (dydt)(t, y);
-    y2[i] = y[i] + 0.5 * dt * rk1;
-    rk2 = (dydt)(t + 0.5 * dt, y2);
-    y3[i] = y[i] + 0.5 * dt * rk2;
-    rk3 = (dydt)(t + 0.5 * dt, y3);
-    y4[i] = y[i] + dt * rk3;
-    rk4 = (dydt)(t + dt, y4);
+    y1[i] = y[i] + 0.5 * dt * rk1;
+    rk2 = (dydt)(t + 0.5 * dt, y1);
+    y1[i] = y[i] + 0.5 * dt * rk2;
+    rk3 = (dydt)(t + 0.5 * dt, y1);
+    y1[i] = y[i] + dt * rk3;
+    rk4 = (dydt)(t + dt, y1);
 
-    free(y2);
-    free(y3);
-    free(y4);
+    free(y1);
     
     return y[i] + (rk1 + 2. * (rk2 + rk3) + rk4) / 6. * dt;
 }

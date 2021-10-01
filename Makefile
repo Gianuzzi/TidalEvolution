@@ -1,12 +1,12 @@
-CC=cc
-MYCFLAGS=
-CFLAGS=-Wall -Wextra -std=c99 -g -march=native -flto $(MYCFLAGS)
-MYLDFLAGS= -Ofast
-LDFLAGS=-lm -lgomp $(MYLDFLAGS)
+CC = cc
+MYCFLAGS = -fopenmp
+CFLAGS = -Wall -Wextra -std=c99 -g -march=native -flto  $(MYCFLAGS)
+MYLDFLAGS = -O3
+LDFLAGS = -lm -lgomp $(MYLDFLAGS)
 
-TARGETS= main
-SOURCES=$(shell echo *.c *.cpp)
-OBJECTS=
+TARGETS = main
+SOURCES = $(shell echo *.c *.cpp)
+OBJECTS =
 
 all: $(TARGETS)
 

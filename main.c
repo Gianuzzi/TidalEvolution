@@ -16,7 +16,6 @@ void test_step (
     integrator integ
     )
 {
-    derivator derydt = &dydt;
     for (unsigned int j = 0; j < N; j++)
     {
         y[j] = integ (t, y, dt, j, derydt);
@@ -32,34 +31,30 @@ void tidal_step (
     integrator integ
     )
 {
-    derivator deriva1 = &dadt;
-    derivator derive1 = &dedt;
-    derivator derivs1 = &dspin1dt;
-    derivator derivo1 = &depsilon1dt;    
-    derivator derivs0 = &dspin0dt;
-    derivator derivo0 = &depsilon0dt;
     double a1n, e1n, s1n, o1n, s0n, o0n;
-
+    
     a1n = integ (t, y, dt, 0, deriva1);
     e1n = integ (t, y, dt, 1, derive1);
     s1n = integ (t, y, dt, 2, derivs1);
-    if (y[3] == 0.)
-    {
-        o1n = 0.;
-    }
-    else
-    {
-        o1n = integ (t, y, dt, 3, derivo1);
-    }  
+    o1n = integ (t, y, dt, 3, derivo1);
     s0n = integ (t, y, dt, 4, derivs0);
-    if (y[5] == 0.)
-    {
-        o0n = 0.;
-    }
-    else
-    {
-        o0n = integ (t, y, dt, 5, derivo0);
-    }  
+    o0n = integ (t, y, dt, 5, derivo0);
+
+    // #pragma omp parallel sections num_threads(6)
+    // {
+    //     #pragma omp section
+    //         { a1n = integ (t, y, dt, 0, deriva1);}
+    //     #pragma omp section
+    //         { e1n = integ (t, y, dt, 1, derive1);}
+    //     #pragma omp section
+    //         { s1n = integ (t, y, dt, 2, derivs1);}
+    //     #pragma omp section
+    //         { o1n = integ (t, y, dt, 3, derivo1);}
+    //     #pragma omp section
+    //         { s0n = integ (t, y, dt, 3, derivs0);}
+    //     #pragma omp section
+    //         { o0n = integ (t, y, dt, 5, derivo0);}
+    // }
 
     y[0] = a1n;
     y[1] = e1n;
@@ -75,7 +70,7 @@ int main ()
 
     // Objects
     /// Object 0
-    m0      = 1.0f;
+    m0      = 1.0;
     spin0   = TWO_PI / 28.;
     oblic0  = 0.0;
     radius0 = KM2AU(695700.);
@@ -102,16 +97,15 @@ int main ()
     c1    = Ci(m1, radius1, alpha1);
 
     // Run conditions
-    t0       = DAY2YR(0.0);
-    dt       = DAY2YR(1e5);
-    tf       = DAY2YR(1e15);
+    t0       = 0.;
+    dt       = 1e4;
+    tf       = 5e10;
     n_points = 2000;
-    t0_old   = 0.;
 
     n_iter = (int)((tf - t0) / dt);
     Logt   = CteLogt(tf - t0, n_points);
-
-    printf("ITER: %i\n", n_iter);
+    t0_old = t0 + Logt;
+    printf("Approximate Iterations: %i\n", n_iter);
 
     // RUN
     y = malloc (y_size);
@@ -120,37 +114,39 @@ int main ()
 
     integrator integ = &runge_kutta4;
 
-    fp = fopen ("salida2.txt", "w");
+    fp = fopen ("Salida.txt", "w");
     fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
-             y[0], y[1], y[2], y[3], y[4], y[5], t0/365.25
+             y[0], y[1], y[2], y[3], y[4], y[5], t0
             );
         
     for (unsigned int i = 0; i < n_iter; i++)
     {
         t0 = t0 + dt;
         tidal_step (t0, y, dt, integ);
-        // if (fmod (i, 5000) == 0)
-        if (t0 >= (t0_old * Logt))
+        // if (t0 >= t0_old)
+        if ((i % 1000) == 0)
         {
             if (isnan (y[0]))
             {
                 printf ("End of RUN. [Encounter]\n");
+                printf ("Total iterations: %i\n", i);
                 break;
             }
-            t0_old = t0;
+            t0_old = t0_old * Logt;
+            printf("Iteration: %i\n", i);
             print_n (y, -1, t0);
             fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
-                        y[0], y[1], y[2], y[3], y[4], y[5], t0/365.25
+                        y[0], y[1], y[2], y[3], y[4], y[5], t0
                     );
         }        
     }
 
-    fclose(fp);
+    fclose(fp);    
     
     free (y);
 
     elapsed = omp_get_wtime () - start_time;
-    printf("Tiempo total: %f\n.", elapsed);
+    printf("Total running time: %f [seg]\n.", elapsed);
 return 0;
 }
 

@@ -7,7 +7,7 @@ static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 # define SQUARE(x) (x * x)
 
 // Physics
-// # define G 39.478f // AU³ yr⁻² Ms⁻¹
+// # define G 39.478 // AU³ yr⁻² Ms⁻¹
 # define PI 3.1415927 // Pi
 # define TWO_PI 6.2831853 // Two Pi
 # define G SQUARE(0.01720209895) // AU³ days⁻² Ms⁻¹
@@ -15,6 +15,7 @@ static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 # define MJ2MS(x) (x * 9.54e-4)
 # define MT2MS(x) (x * 3.04e-6)
 # define DAY2YR(x) (x / 365.2563)
+# define YR2DAY(x) (x * 365.2563)
 # define MU (G * (m0 + m1))
 
 // Implicit integrations methods
@@ -24,8 +25,8 @@ static const size_t y_size = N * sizeof(double); // Size (bytes) of parameters
 // User defined constants
 unsigned int n_iter; // Amount of iterations
 static double dt; // TimeStep [days]
-static double t0; // Initial itegration time
-static double tf; // Final itegration time
+static double t0; // Initial itegration time [days]
+static double tf; // Final itegration time  [days]
 static double Logt; // Cte for ratio (t_[i+1] / t_[i])
 static int n_points; // Amount of total output points
 
@@ -85,35 +86,4 @@ double *y; // Params pointer [a1, e1, spin1, oblic1, spin0, oblic0]
 double t0_old; // Time checkpoint for logarithmic scale output
 
 //---------------------------------------------------------------
-/// STRUCT TYPE
 
-// mass, a, e, i, M, w, O, n, spin, epsilon, radius, alpha, k2, dt
-typedef struct Object
-{
-    const double mass;
-    double a;
-    double e;
-    double i;
-    double M;
-    double w;
-    double O;
-    double n;
-    double spin;
-    double epsilon;
-    const double radius;
-    const double alpha;
-    const double k2;
-    double dt;
-} Object, *Object_ptr;
-
-Object Body0;
-Object Body1;
-
-Object_ptr B0_ptr = &Body0;
-Object_ptr B1_ptr = &Body1;
-
-// struct TidAll
-// {
-//     struct object Body0;
-//     struct object Body1;
-// } TidAll, *TidAll_ptr;
