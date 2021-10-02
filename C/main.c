@@ -34,7 +34,10 @@ void tidal_step (
     )
 {
     double a1n, e1n, s1n, o1n, s0n, o0n;
-    
+
+    k0 = Ki(k0cte, y[0]);
+    k1 = Ki(k1cte, y[0]);
+
     a1n = integ (t, y, dt, 0, deriva1);
     e1n = integ (t, y, dt, 1, derive1);
     s1n = integ (t, y, dt, 2, derivs1);
@@ -88,21 +91,21 @@ int main ()
     radius1 = KM2AU (69911.);
     alpha1  = 0.4;
     q1      = 1.e5;
-
-    /// Calculated
-    n1    = ni (a1);
-    k2dt0 = k2dti (q0, n1);
-    k2dt1 = k2dti (q1, n1);
-    k0    = Ki (m1, radius0, k2dt0);
-    c0    = Ci (m0, radius0, alpha0);
-    k1    = Ki (m0, radius1, k2dt1);
-    c1    = Ci (m1, radius1, alpha1);
-
+    
     // Run conditions
     t0       = 0.;
     dt       = YR2DAY (25.);
     tf       = YR2DAY (2.1e9);
-    n_points = 2000;
+    n_points = 3000;
+
+    /// Calculated
+    n1    = ni (a1);
+    k0cte = Kicte (m1, radius0, q0);
+    k1cte = Kicte (m0, radius1, q1);
+    c0    = Ci (m0, radius0, alpha0);
+    c1    = Ci (m1, radius1, alpha1);
+    k0    = Ki (k0cte, a1);
+    k1    = Ki (k1cte, a1);
 
     // Define Equations
     integ   = &runge_kutta4;
@@ -113,6 +116,7 @@ int main ()
     derivo0 = &depsilon0dt;
     derivo1 = &depsilon1dt;
 
+    
     // Init memory
     y = malloc (y_size);
 
@@ -147,6 +151,15 @@ int main ()
         }
     }
 
+    /// Check times
+    if (tf < t0)
+    {
+        printf ("Final time %f [days] already reached.\n", tf);
+        printf ("Exiting.\n");
+        exit (0);
+    }
+
+    // Open file
     fp = fopen (output, mode);
     
     /// Set and Print parameters array
@@ -159,37 +172,33 @@ int main ()
         );
     }  
 
-    /// LOOP conditions
-    if (tf < t0)
-    {
-        printf ("Final time %f [days] already reached.\n", tf);
-        printf ("Exiting.\n");
-        exit (0);
-    }
-    n_iter = (int)((tf - t0) / dt);
-    
+    // LOOP parameters
+    n_iter = (int)((tf - t0) / dt);    
     Logt   = CteLogt (tf - t0, n_points);
-    t0_old = t0 + Logt;
-    printf("Approximate Iterations: %i\n", n_iter);        
+    t_add  = Logt;
+    printf("Approximate Iterations: %i\n", n_iter);
     
     /// LOOP
+    t      = t0;
+    t_out  = t0 + t_add;
     for (unsigned int i = 0; i < n_iter; i++)
     {
-        t0 = t0 + dt;
-        tidal_step (t0, y, dt, integ);
-        if (t0 >= t0_old)
+        t = t + dt;
+        tidal_step (t, y, dt, integ);
+        if (t >= t_out)
         {
-            if (isnan (y[0]))
+            if ((isnan (y[0])) || (y[0] < 0))
             {
                 printf ("End of RUN. [Encounter]\n");
                 printf ("Total iterations: %i\n", i);
                 break;
             }
-            t0_old = t0_old * Logt;
+            t_add = t_add * Logt;
+            t_out = t0 + t_add;
             printf ("Iteration: %i\n", i);
-            print_n (y, -1, t0);
+            print_n (y, -1, t);
             fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
-                        y[0], y[1], y[2], y[3], y[4], y[5], t0
+                        y[0], y[1], y[2], y[3], y[4], y[5], t
             );
         }        
     }
@@ -199,7 +208,7 @@ int main ()
     free (y);
 
     elapsed = omp_get_wtime () - start_time;
-    printf ("Total running time: %f [seg]\n.", elapsed);
+    printf ("Total running time: %f [sec]\n.", elapsed);
 return 0;
 }
 

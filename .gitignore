@@ -8,6 +8,8 @@ tests/__pycache__/
 # C extensions
 *.so
 *.o
+# FORTRAN extensions
+*.mod
 
 # Distribution / packaging
 .Python

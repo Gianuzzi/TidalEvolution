@@ -11,11 +11,13 @@ extern double dydt (double t, double *y)
 
 extern double dadt (double t, double *y) 
 {   
+    double k0aux = Ki(k0cte, y[0]);
+    double k1aux = Ki(k0cte, y[0]);
     return
      2. / m1prime * pow (y[0], -7)  * 
      (
-        (f2 (y[1]) / ni (y[0])) * (k0 * cos (y[5]) * y[4] + k1 * cos (y[3]) * y[2]) -
-        f3 (y[1]) * (k0 + k1)
+        (f2 (y[1]) / ni (y[0])) * (k0aux * cos (y[5]) * y[4] + k1aux * cos (y[3]) * y[2]) -
+        f3 (y[1]) * (k0aux + k1aux)
      );
 }
 
