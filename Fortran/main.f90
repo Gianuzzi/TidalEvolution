@@ -6,6 +6,7 @@ use auxs
 use params_f
 use funcs_f
 use derivates
+use rk4
 
 implicit none
 
@@ -36,6 +37,8 @@ dt       = 25. * YR2DAY   ! [days]
 tf       = 2.5e9 * YR2DAY ! [days]
 n_points = 3000           ! N_output
 
+!Output
+filename = "Salida.txt"
 !---------------------------------------------------
 
 
@@ -47,67 +50,51 @@ C1     = alpha1 * m1 * radius1**2                        ! [Ms AU²]
 K0cte  = 4.5 * G * m1**2 * radius0**5 / (Q0 * sqrt (mu)) ! [?]
 K1cte  = 4.5 * G * m0**2 * radius1**5 / (Q1 * sqrt (mu)) ! [?]
 
-! Derived parameters
+! Calculated parameters
 n1 = nf  (a1)
 K0 = K0f (a1)
 K1 = K1f (a1)
 
-! LOOP parameters
+! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
 Logt   = exp (log (tf - t0) / (n_points - 1))
 t_add  = Logt
 print *, "Approximate Iterations:", n_iter
 
-! LOOP
-open (10,file='Salida.txt', status='replace')
+!------------------   LOOP   -----------------------
+inquire (file=filename, exist=file_exists)
+
+if (file_exists) then
+    print '("File ",A10, "already exists.")', filename
+    print*, "Enter an option:"
+    print*, "      R: Rewrite file. (Default)"
+    print*, "      E: Exit."
+    read*, selection
+    select case (selection)
+        case ("R")
+            print*, "Rewriting..."
+        case default
+            print*, ("Exiting.")
+            stop (0)
+    end select
+end if
+
+
+open (10, file=filename, status='replace')
 t      = t0
 t_out  = t0 + t_add
 call cpu_time (start_time)
 do i = 0, n_iter
     t = t + dt;
 
-    ! a1
-    rk1 = dadt (a1)
-    rk2 = dadt (a1 + dt * rk1 * 0.5)
-    rk3 = dadt (a1 + dt * rk2 * 0.5)
-    rk4 = dadt (a1 + dt * rk3)
-    a10 = a1 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
+    call integrk4 (a1, dadt,  a10)
+    call integrk4 (e1, dedt,  e10)
+    call integrk4 (s1, ds1dt, s10)
+    call integrk4 (o1, do0dt, o10)
+    call integrk4 (s0, ds0dt, s00)
+    call integrk4 (o0, do0dt, o00)
 
-    ! e1
-    rk1 = dedt (e1)
-    rk2 = dedt (e1 + dt * rk1 * 0.5)
-    rk3 = dedt (e1 + dt * rk2 * 0.5)
-    rk4 = dedt (e1 + dt * rk3)
-    e10 = e1 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
-    
-    ! s1
-    rk1 = ds1dt (s1)
-    rk2 = ds1dt (s1 + dt * rk1 * 0.5)
-    rk3 = ds1dt (s1 + dt * rk2 * 0.5)
-    rk4 = ds1dt (s1 + dt * rk3)
-    s10 = s1 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
-    
-    ! o1
-    rk1 = do1dt (o1)
-    rk2 = do1dt (o1 + dt * rk1 * 0.5)
-    rk3 = do1dt (o1 + dt * rk2 * 0.5)
-    rk4 = do1dt (o1 + dt * rk3)
-    o10 = o1 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
     o10 = mod (o10, TWOPI)
-
-    ! s0
-    rk1 = ds0dt (s0)
-    rk2 = ds0dt (s0 + dt * rk1 * 0.5)
-    rk3 = ds0dt (s0 + dt * rk2 * 0.5)
-    rk4 = ds0dt (s0 + dt * rk3)
-    s00 = s0 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
-    
-    ! o0
-    rk1 = do0dt (o0)
-    rk2 = do0dt (o0 + dt * rk1 * 0.5)
-    rk3 = do0dt (o0 + dt * rk2 * 0.5)
-    rk4 = do0dt (o0 + dt * rk3)
-    o00 = o0 + dt * (rk1 + 2. * (rk2 + rk3) + rk4) / 6.
     o00 = mod (o00, TWOPI)
 
     a1 = a10
@@ -137,7 +124,6 @@ close (10)
 call cpu_time (final_time)
 
 print '("Total running time:",f8.3," [sec].")', final_time - start_time
-
 
 end program tidal
 

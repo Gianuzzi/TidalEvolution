@@ -22,6 +22,9 @@ module const
     real*8    :: radius1, alpha1, Q1, C1, K1cte ! Body0 constant parameters
 
     !Extra
-    real*8 :: start_time ! Excecution start time
-    real*8 :: final_time ! Total elapsed time
+    character(30) :: filename    ! Output file
+    character(1)  :: selection   ! In case the file exists
+    logical       :: file_exists ! File existance  
+    real*8        :: start_time  ! Excecution start time
+    real*8        :: final_time  ! Total elapsed time
 end module const
