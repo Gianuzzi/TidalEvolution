@@ -1,12 +1,9 @@
 program tidal
 
 use const
-use vars
-use auxs
-use params_f
-use funcs_f
-use derivates
-use rk4
+use run
+use tidal_derivates
+use integrators
 
 implicit none
 
@@ -50,11 +47,6 @@ C1     = alpha1 * m1 * radius1**2                        ! [Ms AU²]
 K0cte  = 4.5 * G * m1**2 * radius0**5 / (Q0 * sqrt (mu)) ! [?]
 K1cte  = 4.5 * G * m0**2 * radius1**5 / (Q1 * sqrt (mu)) ! [?]
 
-! Calculated parameters
-n1 = nf  (a1)
-K0 = K0f (a1)
-K1 = K1f (a1)
-
 ! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
 Logt   = exp (log (tf - t0) / (n_points - 1))
@@ -65,20 +57,21 @@ print *, "Approximate Iterations:", n_iter
 inquire (file=filename, exist=file_exists)
 
 if (file_exists) then
-    print '("File ",A10, "already exists.")', filename
+    print '("File ",A15, " already exists.")', filename
     print*, "Enter an option:"
-    print*, "      R: Rewrite file. (Default)"
+    print*, "      R: Overwrite file. (Default)"
     print*, "      E: Exit."
     read*, selection
     select case (selection)
         case ("R")
-            print*, "Rewriting..."
+            print*, "Overwriting..."
+        case ("r")
+            print*, "Overwriting..."
         case default
             print*, ("Exiting.")
             stop (0)
     end select
 end if
-
 
 open (10, file=filename, status='replace')
 t      = t0
@@ -87,12 +80,17 @@ call cpu_time (start_time)
 do i = 0, n_iter
     t = t + dt;
 
-    call integrk4 (a1, dadt,  a10)
-    call integrk4 (e1, dedt,  e10)
-    call integrk4 (s1, ds1dt, s10)
-    call integrk4 (o1, do1dt, o10)
-    call integrk4 (s0, ds0dt, s00)
-    call integrk4 (o0, do0dt, o00)
+    ! Calculated parameters
+    n1 = nf  (a1)
+    K0 = K0f (a1)
+    K1 = K1f (a1)
+    
+    call rungek4 (t, a1, dt, dadt,  a10)
+    call rungek4 (t, e1, dt, dedt,  e10)
+    call rungek4 (t, s1, dt, ds1dt, s10)
+    call rungek4 (t, o1, dt, do1dt, o10)
+    call rungek4 (t, s0, dt, ds0dt, s00)
+    call rungek4 (t, o0, dt, do0dt, o00)
 
     o10 = mod (o10, TWOPI)
     o00 = mod (o00, TWOPI)

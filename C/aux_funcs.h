@@ -87,7 +87,6 @@ extern double f5_short (double e)
     (1. + 10.25 * SQUARE (e)); 
 }
 
-
 // Mean motion
 double ni (double a)
 {
@@ -137,29 +136,9 @@ extern double CteLogt (double total_t, int npoints)
 }
 
 // Print parameters of array
-extern void print_n (double *y, int i, double t)
+extern void print_n (double t)
 {
-    if (i < 0)
-    {
-        if (N == 6)
-        {
-                    printf (
-                        " a1:%.3e e1:%.3e spin1:%.3e " \
-                        "eps1:%.3e spin0:%.3e eps0:%.3e t:%.3e [yr]\n",
-                        y[0], y[1], y[2], y[3], y[4], y[5], DAY2YR (t)
-                   );
-        }
-        else
-        {
-            for (unsigned int j = 0; j < N; j++)
-            {
-                printf (" %.4e,  ", y[j]);
-            }
-            printf (" t = %.5f [yr]\n", DAY2YR (t));
-        }
-    }
-    else
-    {
-        printf (" y[%i] = %.5f, t = %.5f [yr]\n", i, y[i], DAY2YR (t));
-    }
+    printf (" a1:%.3e e1:%.3e spin1:%.3e " \
+            "eps1:%.3e spin0:%.3e eps0:%.3e t:%.3e [yr]\n",
+            a1, e1, s1, o1, s0, o0, DAY2YR (t));
 }

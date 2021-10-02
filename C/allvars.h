@@ -1,7 +1,4 @@
 //---------------------- Constants ---------------------------------
-// INTEGRATION
-static const unsigned int N = 6;                 // Amount of parameters
-static const size_t y_size = N * sizeof (double); // Size (bytes) of parameters
 
 // Functions
 # define SQUARE(x) (x * x)
@@ -36,11 +33,11 @@ static char *output;  // Output file name
 
 //---------------------- Dynamics ---------------------------------
 // Time calculations
-double start_time; // Initial cpu time
-double elapsed;    // Total cpu time
+double start_time;  // Initial cpu time
+double elapsed;     // Total cpu time
 
-FILE *fp;      // File with solution array
-char mode[1];  // File with solution array
+FILE *fp;           // Output file
+char mode[2];       // Char for possible restart
 
 static double t_out; // Time checkpoint for logarithmic scale output
 static double t_add; // Time adition for logarithmic scale output
@@ -49,8 +46,8 @@ static double t_add; // Time adition for logarithmic scale output
 unsigned int selection; // Dummy int if output file already exists
 
 //---------------------- Function types ----------------------------
-typedef double (*derivator)(double, double *);
-typedef double (*integrator)(double, double *, double, int, derivator);
+typedef double (*derivator)(double, double);
+typedef double (*integrator)(double, double, double, derivator);
 
 derivator derydt;  // dydt (for testing)
 derivator deriva1; // da1dt
@@ -64,41 +61,39 @@ integrator integ;  // Integrator used
 //---------------------- Objects parametes -------------------------
 
 // Object 0
-double m0;       // Mass [Ms]
-double spin0;    // Spin [rad day⁻¹]
-double oblic0;   // Obliquity [rad]
-double radius0;  // Radius [AU]
-double k20;      // Love coefficient
-double dt0;      // Delta t (obliquity) [seg]
-double k2dt0;    // Love coefficient * Delta t (obliquity) [seg]
-double alpha0;   // Alpha (inertia)
+double m0;        // Mass [Ms]
+double s0;        // Spin [rad day⁻¹]
+double o0;        // Obliquity [rad]
+double radius0;   // Radius [AU]
+double k20;       // Love coefficient
+double dt0;       // Delta t (obliquity) [seg]
+double k2dt0;     // Love coefficient * Delta t (obliquity) [seg]
+double alpha0;    // Alpha (inertia)
 
-static double k0;// Tidal force magnitude
-double c0;       // Moment of inertia
-double q0;       // Tidal dissipation factor
-double k0cte;    // Tidal force magnitude constant (k0 * a⁻¹/²)
+static double k0; // Tidal force magnitude
+double c0;        // Moment of inertia
+double q0;        // Tidal dissipation factor
+double k0cte;     // Tidal force magnitude constant (k0 * a⁻¹/²)
 
 // Object 1
-double m1;       // Mass [Ms]
-double a1;       // Semimajor axis [AU]
-double e1;       // Eccentricity
-double n1;       // Mean movement [rad seg⁻¹]
-double spin1;    // Spin [rad day⁻¹]
-double oblic1;   // Obliquity [rad]
-double radius1;  // Radius [AU]
-double k21;      // Love coefficient
-double dt1;      // Delta t (obliquity) [seg]
-double k2dt1;    // Love coefficient * Delta t (obliquity) [seg]
-double alpha1;   // Alpha (inertia)
+double m1;        // Mass [Ms]
+double a1;        // Semimajor axis [AU]
+double e1;        // Eccentricity
+static double n1; // Mean movement [rad seg⁻¹]
+double s1;        // Spin [rad day⁻¹]
+double o1;        // Obliquity [rad]
+double radius1;   // Radius [AU]
+double k21;       // Love coefficient
+double dt1;       // Delta t (obliquity) [seg]
+double k2dt1;     // Love coefficient * Delta t (obliquity) [seg]
+double alpha1;    // Alpha (inertia)
 
-static double k1;// Tidal force magnitude
-double c1;       // Moment of inertia
-double q1;       // Tidal dissipation factor
-double k1cte;    // Tidal force magnitude constant (k1 * a⁻¹/²)
+static double k1; // Tidal force magnitude
+double c1;        // Moment of inertia
+double q1;        // Tidal dissipation factor
+double k1cte;     // Tidal force magnitude constant (k1 * a⁻¹/²)
 
 // ---------------------- Run -------------------------
-static double *y; // Params pointer [a1, e1, spin1, oblic1, spin0, oblic0]
 static double t;  // Time
 
-//---------------------------------------------------------------
 

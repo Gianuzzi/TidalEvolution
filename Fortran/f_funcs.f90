@@ -1,4 +1,4 @@
-module funcs_f
+module f_funcs
     contains
         real*8 function f1 (e) result (f)
             implicit none
@@ -78,4 +78,4 @@ module funcs_f
             real*8, intent (in) :: e
             f = 1. + 10.25 * e**2
         end function f5_short
-end module funcs_f
+end module f_funcs
