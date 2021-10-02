@@ -90,7 +90,7 @@ do i = 0, n_iter
     call integrk4 (a1, dadt,  a10)
     call integrk4 (e1, dedt,  e10)
     call integrk4 (s1, ds1dt, s10)
-    call integrk4 (o1, do0dt, o10)
+    call integrk4 (o1, do1dt, o10)
     call integrk4 (s0, ds0dt, s00)
     call integrk4 (o0, do0dt, o00)
 
