@@ -1,6 +1,6 @@
 # include <math.h>
 
-extern double f1 (double e)
+extern double f1_l (double e)
 {
     return
     (1. +
@@ -11,7 +11,7 @@ extern double f1 (double e)
     );
 }
 
-extern double f2 (double e)
+extern double f2_l (double e)
 {
     return 
     (1. +
@@ -23,7 +23,7 @@ extern double f2 (double e)
     ); 
 }
 
-extern double f3 (double e)
+extern double f3_l (double e)
 {
     return 
     (1. +
@@ -35,7 +35,7 @@ extern double f3 (double e)
     );
 }
 
-extern double f4 (double e)
+extern double f4_l (double e)
 {
     return 
     (1. +
@@ -45,7 +45,7 @@ extern double f4 (double e)
     );
 }
 
-extern double f5 (double e)
+extern double f5_l (double e)
 {
     return 
     (1. +
@@ -57,40 +57,71 @@ extern double f5 (double e)
 }
 
 
-extern double f1_short (double e)
+extern double f1_s (double e)
 {
     return
     (1. + 7.5 * SQUARE (e));
 }
 
-extern double f2_short (double e)
+extern double f2_s (double e)
 {
     return 
     (1. + 13.5 * SQUARE (e));
 }
 
-extern double f3_short (double e)
+extern double f3_s (double e)
 {
     return 
     (1. + 23. * SQUARE (e));
 }
 
-extern double f4_short (double e)
+extern double f4_s (double e)
 {
     return 
     (1. + 6.5 * SQUARE (e));
 }
 
-extern double f5_short (double e)
+extern double f5_s (double e)
 {
     return 
     (1. + 10.25 * SQUARE (e)); 
 }
 
+extern void set_f_funcs (char t)
+{
+    if (t == 0)
+    {
+        f1 = f1_l;
+        f2 = f2_l;
+        f3 = f3_l;
+        f4 = f4_l;
+        f5 = f5_l;
+        
+    }
+    else
+    {
+        f1 = &f1_s;
+        f2 = &f2_s;
+        f3 = &f3_s;
+        f4 = &f4_s;
+        f5 = &f5_s;
+    }    
+}
+
+extern void eval_f (double e)
+{
+    fe1 = f1 (e);
+    fe2 = f2 (e);
+    fe3 = f3 (e);
+    fe4 = f4 (e);
+    fe5 = f5 (e);
+}
+
+
 // Mean motion
 double ni (double a)
 {
-    return sqrt(MU / pow (a, 3));
+    return sqrt (MU / pow (a, 3));
 }
 
 // k2 * Deltat
@@ -99,24 +130,11 @@ extern double k2dti (double q, double a)
     return 1.5 / (q * ni (a));
 }
 
-// Tidal force magnitude constant (ki * a⁻¹/²)
-extern double Kicte (double mass, double radius, double q)
-{
-    return 4.5 * G * SQUARE (mass) * pow (radius, 5) / (q * sqrt (MU)) ;
-}
-
 // Tidal force magnitude
-extern double Ki (double kicte, double a)
+extern double Ki (double mass, double radius, double q, double a)
 {
-    return kicte * pow (a, 1.5);
+    return 3. * G * SQUARE (mass) * pow (radius, 5) * k2dti (q, a);
 }
-
-// // Tidal force magnitude
-// extern double Ki (double mass, double radius, double q, double a)
-// {
-//     return 3. * G * SQUARE (mass) * pow (radius, 5) * k2dti (q, a);
-// }
-
 
 // Inertia moment constant
 extern double Ci (double mass, double radius, double alpha)
@@ -124,6 +142,7 @@ extern double Ci (double mass, double radius, double alpha)
     return alpha * mass * SQUARE (radius);
 }
 
+// Angular momentum
 extern double AngMom (double a, double e)
 {
     return sqrt(MU * a * (1 - SQUARE (e)));

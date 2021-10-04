@@ -31,8 +31,8 @@ void tidal_step (
     double a1n, e1n, s1n, o1n, s0n, o0n;
 
     n1 = ni (a1);
-    k0 = Ki (k0cte, a1);
-    k1 = Ki (k1cte, a1);
+    AM = AngMom(a1, e1);
+    eval_f (e1);
 
     a1n = integ (t, a1, dt, deriva1);
     e1n = integ (t, e1, dt, derive1);
@@ -41,20 +41,20 @@ void tidal_step (
     s0n = integ (t, s0, dt, derivs0);
     o0n = integ (t, o0, dt, derivo0);
 
-    // #pragma omp parallel sections num_threads(6)
+    // #pragma omp parallel sections num_threads(2)
     // {
     //     #pragma omp section
-    //         { a1n = integ (t, a1, dt, deriva1);}
+    //     {
+    //         a1n = integ (t, a1, dt, deriva1);
+    //         e1n = integ (t, e1, dt, derive1);
+    //         s1n = integ (t, s1, dt, derivs1);
+    //         }
     //     #pragma omp section
-    //         { e1n = integ (t, e1, dt, derive1);}
-    //     #pragma omp section
-    //         { s1n = integ (t, s1, dt, derivs1);}
-    //     #pragma omp section
-    //         { o1n = integ (t, o1, dt, derivo1);}
-    //     #pragma omp section
-    //         { s0n = integ (t, s0, dt, derivs0);}
-    //     #pragma omp section
-    //         { o0n = integ (t, o0, dt, derivo0);}
+    //     {
+    //         o1n = integ (t, o1, dt, derivo1);
+    //         s0n = integ (t, s0, dt, derivs0);
+    //         o0n = integ (t, o0, dt, derivo0);
+    //     }
     // }
 
     a1 = a1n;
@@ -73,7 +73,7 @@ int main ()
     /// Object 0
     m0      = 1.0;
     s0      = TWO_PI / 28.;
-    o0      = 0.0;
+    o0      = 25.* PI / 180.;
     radius0 = KM2AU (695700.);
     alpha0  = 0.4;
     q0      = 1.e6;
@@ -82,40 +82,35 @@ int main ()
     m1      = MJ2MS (1.);
     a1      = 0.05;
     e1      = 0.1;
-    s1      = TWO_PI / 1.;
-    o0      = 0.0;
+    s1      = TWO_PI / 0.01;
+    o1      = 80. * PI / 180.;
     radius1 = KM2AU (69911.);
     alpha1  = 0.4;
     q1      = 1.e5;
     
     // Run conditions
     t0       = 0.;
-    dt       = YR2DAY (25.);
-    tf       = YR2DAY (2.5e9);
-    n_points = 3000;
+    dt       = YR2DAY (50.);
+    tf       = YR2DAY (1.e10);
+    n_points = 3500;
+    shortf   = 0;
+
 
     /// Calculated
     n1    = ni (a1);
-    k0cte = Kicte (m1, radius0, q0);
-    k1cte = Kicte (m0, radius1, q1);
     c0    = Ci (m0, radius0, alpha0);
     c1    = Ci (m1, radius1, alpha1);
-    k0    = Ki (k0cte, a1);
-    k1    = Ki (k1cte, a1);
-
-    // Define Equations
+    k0    = Ki (m1, radius0, q0, a1);
+    k1    = Ki (m0, radius1, q1, a1);
+    
+    // SET Equations
+    set_f_funcs(shortf);
+    set_edos();
     integ   = &runge_kutta4;
-    deriva1 = &dadt;
-    derive1 = &dedt;
-    derivs0 = &dspin0dt;
-    derivs1 = &dspin1dt;
-    derivo0 = &depsilon0dt;
-    derivo1 = &depsilon1dt;
-    print_n(t0);
 
     // Define output
-    output = "Salida.txt";
-    strcpy (mode, "w");;
+    output = "Salida3.txt";
+    strcpy (mode, "w");
 
     if (access (output, F_OK) == 0)
     {
@@ -133,7 +128,7 @@ int main ()
         
         case 1:
             printf ("Reading parameters from file...\n");
-            t0 = set_from_file(output);
+            t0 = set_from_file (output);
             strcpy (mode, "a");
             break;
         
@@ -152,12 +147,28 @@ int main ()
         exit (0);
     }
 
+    /// Save initial params to file
+    char params[strlen (output) + 7];
+    strcpy (params, output);
+    strcat (params, ".params");
+    ip = fopen (params, mode);
+    if (strcmp (mode, "w") == 0)
+    {
+        fprintf(ip, "m0, r0, al0, Q0, m1, r1, al1, Q1, "
+                    "a1, e1, s1, s1, s0, o0, "
+                    "t0, dt, tf\n");
+    }
+    fprintf (ip, "%16.9e, %16.9e, %16.9e, %16.9e, %16.9e, %16.9e, %16.9e\n",
+                    a1, e1, s1, o1, s0, o0, t0);
+    fclose (ip);
+    
+    
     // Open file
     fp = fopen (output, mode);
     
     /// Set and Print parameters array
     print_n (t0);
-    if (strcmp(mode, "w"))
+    if (strcmp (mode, "w") == 0)
     {
         fprintf (fp, "%e, %e, %e, %e, %e, %e, %e\n",
                  a1, e1, s1, o1, s0, o0, t0);
@@ -197,6 +208,7 @@ int main ()
 
     elapsed = omp_get_wtime () - start_time;
     printf ("Total running time: %f [sec]\n.", elapsed);
+
 return 0;
 }
 

@@ -11,14 +11,12 @@ extern double dydt (double t, double y)
 }
 
 extern double dadt (double t, double a) 
-{   
-    double k0aux = Ki(k0cte, a);
-    double k1aux = Ki(k0cte, a);
+{
     return
      2. / m1prime * pow (a, -7)  * 
      (
-        (f2 (e1) / ni (a)) * (k0aux * cos (o0) * s0 + k1aux * cos (o1) * s1) -
-        f3 (e1) * (k0aux + k1aux)
+        (fe2 / ni (a)) * (k0 * cos (o0) * s0 + k1 * cos (o1) * s1) -
+        fe3 * (k0 + k1)
      );
 }
 
@@ -37,8 +35,8 @@ extern double dspin0dt (double t, double s)
     return
      - k0 * n1 / (c0 * pow(a1, 6)) *
      (
-      f1 (e1) * 0.5 * (1. + pow (cos (o0), 2)) * s / n1 - \
-      f2 (e1) * cos (o0)
+      fe1 * 0.5 * (1. + pow (cos (o0), 2)) * s / n1 - \
+      fe2 * cos (o0)
      );
 }
 
@@ -47,8 +45,8 @@ extern double dspin1dt (double t, double s)
     return
      - k1 * n1 / (c1 * pow (a1, 6)) *
      (
-      f1 (e1) * 0.5 * (1. + pow (cos (o1), 2)) * s / n1 - \
-      f2 (e1) * cos (o1)
+      fe1 * 0.5 * (1. + pow (cos (o1), 2)) * s / n1 - \
+      fe2 * cos (o1)
      );
 }
 
@@ -57,8 +55,8 @@ extern double depsilon0dt (double t, double o)
     return
      k0 * n1 / (c0 * s0 * pow (a1, 6)) *
      (
-      f1 (e1) * 0.5 * s0 / n1 * (cos (o) - (c0 * s0) / (m1 * AngMom (a1, e1))) - \
-      f2 (e1)
+      fe1 * 0.5 * s0 / n1 * (cos (o) - (c0 * s0) / (m1 * AM)) - \
+      fe2
      ) * sin (o);
 }
 
@@ -67,7 +65,17 @@ extern double depsilon1dt (double t, double o)
     return
      k1 * n1 / (c1 * s1 * pow (a1, 6)) *
      (
-      f1 (e1) * 0.5 * s1 / n1 * (cos (o) - (c1 * s1) / (m0 * AngMom (a1, e1))) - \
-      f2 (e1)
+      fe1 * 0.5 * s1 / n1 * (cos (o) - (c1 * s1) / (m0 * AM)) - \
+      fe2
      ) * sin (o);
+}
+
+extern void set_edos()
+{
+    deriva1 = &dadt;
+    derive1 = &dedt;
+    derivs0 = &dspin0dt;
+    derivs1 = &dspin1dt;
+    derivo0 = &depsilon0dt;
+    derivo1 = &depsilon1dt;
 }

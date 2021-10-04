@@ -8,7 +8,7 @@ module run
     real*8    :: Logt, t_add, t_out             ! Time [output]
 
     !Extra
-    character(30) :: filename    ! Output file
+    character(32) :: filename    ! Output file
     character(1)  :: selection   ! In case the file exists
     logical       :: file_exists ! File existance  
     real*8        :: start_time  ! Excecution start time

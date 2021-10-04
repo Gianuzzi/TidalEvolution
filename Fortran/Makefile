@@ -1,11 +1,11 @@
 FC = gfortran
-MYFFLAGS = 
+MYFFLAGS =
 FFLAGS = -Wall -Wextra -march=native $(MYFFLAGS)
 MYLDFLAGS = -O3
 LDFLAGS = $(MYLDFLAGS)
 
 TARGETS = main
-SOURCES = const.f90 f_funcs.f90 tidal_vars.f90 tidal_derivates.f90 integrators.f90 run.f90 main.f90
+SOURCES = const.F90 f_funcs.F90 tidall.F90 integrators.F90 run.F90 main.F90
 OBJECTS = ${SOURCES:.f90=.o}
 
 all: $(TARGETS)

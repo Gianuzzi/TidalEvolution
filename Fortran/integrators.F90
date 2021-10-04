@@ -1,12 +1,29 @@
 module integrators
+
     implicit none
     integer*8, parameter :: MAX_ITER = 10000
     real*8, parameter    :: MIN_ERR = 1e-9
+
+    abstract interface 
+
+        real*8 function dydt_tem(t, y) result(der)
+            real*8, intent(in)  :: t, y
+        end function dydt_tem
+
+        subroutine integ_tem(t, y, dt, dydt, ynew)
+            real*8, intent(in)  :: t, y, dt
+            procedure(dydt_tem) :: dydt
+            real*8, intent(out) :: ynew
+        end subroutine integ_tem
+
+    end interface
+
     contains
+
         subroutine euler_forward (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             
             ynew = y + dydt (t, y) * dt
@@ -15,7 +32,7 @@ module integrators
         subroutine euler_backward (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: y1, dy1
             integer*8           :: k
@@ -34,7 +51,7 @@ module integrators
         subroutine euler_centred (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: y1, dy1
             integer*8           :: k
@@ -53,7 +70,7 @@ module integrators
         subroutine rungek2 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: rk1, rk2 ! RungeKuttas
     
@@ -65,7 +82,7 @@ module integrators
         subroutine midpoint (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: rk1, rk2 ! RungeKuttas
     
@@ -77,7 +94,7 @@ module integrators
         subroutine ralston (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: rk1, rk2 ! RungeKuttas
     
@@ -90,7 +107,7 @@ module integrators
         subroutine rungek4 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)  :: t, y, dt
-            real*8, external    :: dydt
+            procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: rk1, rk2, rk3, rk4 ! RungeKuttas
     
@@ -100,4 +117,5 @@ module integrators
             rk4 = dydt (t, y + dt * rk3)
             ynew = y + 1 / 6. * (rk1 + 2. * (rk2 + rk3) + rk4) * dt
         end subroutine rungek4
+        
 end module integrators

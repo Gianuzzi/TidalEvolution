@@ -28,19 +28,23 @@ static double Logt;  // Cte for ratio (t_[i+1] / t_[i])
 static int n_points; // Amount of total output points
 static char *output;  // Output file name
 
-
 # define m1prime (m0 * m1) / (m0 + m1)
 
 //---------------------- Dynamics ---------------------------------
 // Time calculations
-double start_time;  // Initial cpu time
-double elapsed;     // Total cpu time
+double start_time;             // Initial cpu time
+double elapsed;                // Total cpu time
 
-FILE *fp;           // Output file
-char mode[2];       // Char for possible restart
+FILE *fp;                      // Output file
+FILE *ip;                      // Output initial params file
+char mode[2];                  // Char for possible restart
 
-static double t_out; // Time checkpoint for logarithmic scale output
-static double t_add; // Time adition for logarithmic scale output
+static double t_out;            // Time checkpoint for logarithmic scale output
+static double t_add;            // Time adition for logarithmic scale output
+
+double AM;                      // Angular momentum
+double fe1, fe2, fe3, fe4, fe5; // f_i(e1)
+unsigned char shortf;           // Use long f_i [=0] or not
 
 //---------------------- Input ---------------------------------
 unsigned int selection; // Dummy int if output file already exists
@@ -48,15 +52,17 @@ unsigned int selection; // Dummy int if output file already exists
 //---------------------- Function types ----------------------------
 typedef double (*derivator)(double, double);
 typedef double (*integrator)(double, double, double, derivator);
+typedef double (*f_func)(double);
 
-derivator derydt;  // dydt (for testing)
-derivator deriva1; // da1dt
-derivator derive1; // de1dt
-derivator derivs1; // ds1dt
-derivator derivo1; // do1dt
-derivator derivs0; // ds1dt
-derivator derivo0; // do0dt
-integrator integ;  // Integrator used
+derivator derydt;            // dydt (for testing)
+derivator deriva1;           // da1dt
+derivator derive1;           // de1dt
+derivator derivs1;           // ds1dt
+derivator derivo1;           // do1dt
+derivator derivs0;           // ds1dt
+derivator derivo0;           // do0dt
+integrator integ;            // Integrator used
+f_func f1, f2, f3, f4, f5;   // Pointers to f_i functions
 
 //---------------------- Objects parametes -------------------------
 
