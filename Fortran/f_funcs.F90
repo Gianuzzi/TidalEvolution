@@ -2,7 +2,7 @@ module f_funcs
 
     abstract interface 
 
-        real*8 function f_tem(e) result(f)
+        real*8 function f_tem (e) result (f)
             real*8 :: e
         end function f_tem
 

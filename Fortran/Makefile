@@ -5,7 +5,7 @@ MYLDFLAGS = -O3
 LDFLAGS = $(MYLDFLAGS)
 
 TARGETS = main
-SOURCES = const.F90 f_funcs.F90 tidall.F90 integrators.F90 run.F90 main.F90
+SOURCES = const.F90 integrators.F90 f_funcs.F90 tidall.F90 run.F90 main.F90
 OBJECTS = ${SOURCES:.f90=.o}
 
 all: $(TARGETS)

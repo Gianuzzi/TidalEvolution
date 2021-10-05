@@ -15,6 +15,9 @@ module tidall
     real*8 :: a10, e10, s10, o10, o00, s00   ! Iteration variables
     real*8 :: cos0, cos1                     ! cos (o_i)
     real*8 :: fe1, fe2, fe3, fe4, fe5        ! f_i (e)
+    real*8 :: a11, e11, s11, o11, o01, s01   ! Iteration variables for adaptive
+    ! real*8 :: arr(6)                        ! array with parameters
+    real*8 :: e_tol, dt_min, beta, err       ! For adaptive step
     
     contains
 
@@ -137,5 +140,5 @@ module tidall
                 & ((11. / 18. * f4_s (e) / n1) * (k0 * cos0 * s0 + k1 * cos1 * s1) - &
                 & f5_s (e) * (k0 + k1))
         end function dedt_s
-
+        
 end module tidall
