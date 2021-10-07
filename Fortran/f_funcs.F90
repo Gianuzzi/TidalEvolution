@@ -1,4 +1,6 @@
 module f_funcs
+    
+    implicit none
 
     abstract interface 
 

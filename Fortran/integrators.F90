@@ -1,8 +1,6 @@
 module integrators
 
     implicit none
-    integer*8, parameter :: MAX_ITER = 10000
-    real*8, parameter    :: MIN_ERR = 1e-9
 
     abstract interface 
 
@@ -57,38 +55,38 @@ module integrators
             ynew = y + dydt (t, y) * dt
         end subroutine euler_forward
 
-        subroutine euler_backward (t, y, dt, dydt, ynew)
+        subroutine euler_backward (t, y, dt, dydt, max_iter, e_tol, ynew)
             implicit none
-            real*8, intent(in)  :: t, y, dt
+            real*8, intent(in)  :: t, y, dt, max_iter, e_tol
             procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: y1, dy1
             integer*8           :: k
 
             y1 = y
-            do k = 0, MAX_ITER
+            do k = 0, max_iter
                 dy1 = dydt (t + dt, y1) * dt
                 y1  = y1 + dy1
-                if (abs (dy1) <= MIN_ERR) then
+                if (abs (dy1) <= e_tol) then
                     exit
                 end if 
             end do            
             ynew = y + dy1
         end subroutine euler_backward
 
-        subroutine euler_centred (t, y, dt, dydt, ynew)
+        subroutine euler_centred (t, y, dt, dydt, max_iter, e_tol, ynew)
             implicit none
-            real*8, intent(in)  :: t, y, dt
+            real*8, intent(in)  :: t, y, dt, max_iter, e_tol
             procedure(dydt_tem) :: dydt
             real*8, intent(out) :: ynew
             real*8              :: y1, dy1
             integer*8           :: k
 
             y1 = y
-            do k = 0, MAX_ITER
+            do k = 0, max_iter
                 dy1 = dydt (t + dt, y1) * dt
                 y1  = y1 + dy1
-                if (abs (dy1) <= MIN_ERR) then
+                if (abs (dy1) <= e_tol) then
                     exit
                 end if 
             end do            
@@ -153,7 +151,7 @@ module integrators
             rk1 = dydt (t, y)
             rk2 = dydt (t + 0.5 * dt, y + dt * rk1 * 0.5)
             rk3 = dydt (t + dt, y + dt * (2. * rk2 - rk1))
-            ynew = y + 1 /6. * (rk1 + 4. * rk2 + rk3) * dt
+            ynew = y + 1/6. * (rk1 + 4. * rk2 + rk3) * dt
         end subroutine rungek3
 
         subroutine heun3 (t, y, dt, dydt, ynew)
@@ -206,7 +204,7 @@ module integrators
             rk2 = dydt (t + 0.5 * dt, y + dt * rk1 * 0.5)
             rk3 = dydt (t + 0.5 * dt, y + dt * rk2 * 0.5)
             rk4 = dydt (t, y + dt * rk3)
-            ynew = y + 1 /6. * (rk1 + 2. * (rk2 + rk3) + rk4) * dt
+            ynew = y + 1/6. * (rk1 + 2. * (rk2 + rk3) + rk4) * dt
         end subroutine rungek4
 
         subroutine rungek4_3oct (t, y, dt, dydt, ynew)
@@ -236,7 +234,7 @@ module integrators
             rk4 = dydt (t + 12/13. * dt,  y + dt * (rk2 + 2. * rk3) * 0.5)
             rk5 = dydt (t + 0.75 * dt, y - dt * (0.5 * rk1 + 3. * rk4) * 0.375)
             rk6 = dydt (t, y - dt * (3. * rk1 - 2. * rk2 - 12. * (rk3 - rk4) - 8. * rk5) /7.)
-            ynew = y + 1 /90. * (7. * (rk1 + rk6) + 32. * (rk2 + rk5) + 12. * rk4) * dt
+            ynew = y + 1/90. * (7. * (rk1 + rk6) + 32. * (rk2 + rk5) + 12. * rk4) * dt
         end subroutine Fehlberg4
 
         subroutine rungek6 (t, y, dt, dydt, ynew)
@@ -255,7 +253,7 @@ module integrators
                   &   0.,  7/90., 16/45., 6/45., 16/45., 7/90., 0.  & !y
                   & /)
             
-            call rksolve(t, y, dt, dydt, reshape(m, (/7,7/)), ynew)
+            call rksolve(t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
         end subroutine rungek6
 
 
@@ -265,16 +263,16 @@ module integrators
             real*8, intent (in)                :: y, t, e_tol, beta, dt_min
             real*8, intent (inout)             :: dt
             real*8, intent (out)               :: ynew
-            real*8                             :: yaux, err
+            real*8                             :: yaux, e_calc
             real*8, dimension(:), allocatable  :: rk
             real*8, parameter, dimension(49)   :: m = &
-            & (/  0.,         0.,         0.,          0.,           0.,      0.,    0., & !k1
-            &   0.25,       0.25,         0.,          0.,           0.,      0.,    0., & !k2
-            &  0.375,      3/32.,      9/32.,          0.,           0.,      0.,    0., & !k3
-            & 12/13., 1932/2197., 7200/2197.,  7296/2197.,           0.,      0.,    0., & !k4
-            &     1.,   439/216.,        -8.,   3680/513.,   -845/4104.,      0.,    0., & !k5
-            &    0.5,     -8/27.,        -2., -3544/2565.,   1859/4104., -11/40.,    0., & !k6
-            &     0.,    16/135.,         0., 6656/12825., 28561/56430.,   -0.18, 2/55. /) !y
+               & (/  0.,         0.,          0.,          0.,           0.,      0.,    0., & !k1
+               &   0.25,       0.25,          0.,          0.,           0.,      0.,    0., & !k2
+               &  0.375,      3/32.,       9/32.,          0.,           0.,      0.,    0., & !k3
+               & 12/13., 1932/2197., -7200/2197.,  7296/2197.,           0.,      0.,    0., & !k4
+               &     1.,   439/216.,         -8.,   3680/513.,   -845/4104.,      0.,    0., & !k5
+               &    0.5,     -8/27.,          2., -3544/2565.,   1859/4104., -11/40.,    0., & !k6
+               &     0.,    16/135.,          0., 6656/12825., 28561/56430.,   -0.18, 2/55. /) !y
 
             dt = max (dt, dt_min)
             call get_rks(t, y, dt, dydt, reshape (m, shape=(/7,7/)), rk)
@@ -282,14 +280,15 @@ module integrators
             yaux = y + dt * dot_product ((/25/216., 0.,  1408/2565.,   2197/4104.,  -0.2,    0./), rk)
             ynew = y + dt * dot_product ((/16/135., 0., 6656/12825., 28561/56430., -0.18, 2/55./), rk)
             
-            err = abs (ynew - yaux)
-            if (err < e_tol) then
-                dt = max (beta * dt * (e_tol / err)**0.25, dt_min)
+            ! e_calc = abs (dot_product ((/1/360., 0., -128/4275., -2197/75240., 0.02, 2/55./), rk))
+            e_calc = abs (ynew - yaux)
+            if (e_calc < e_tol) then
+                dt = max (beta * dt * (e_tol / e_calc)**0.25, dt_min)
             else
-                dt = beta * dt * (e_tol / err)**0.2
+                dt = beta * dt * (e_tol / e_calc)**0.2
                 if ((isnan (dt)) .or. (dt < dt_min)) then
                     dt = dt_min
-                    call rksolve (t, y, dt, dydt, reshape(m, (/7,7/)), ynew)
+                    call rksolve (t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
                 else
                     call rec_rk4_5 (t, y, dt, dydt, e_tol, beta, dt_min, ynew)
                 end if 
@@ -305,17 +304,17 @@ module integrators
             real*8, intent (in)    :: y, t, e_tol, beta, dt_min
             real*8, intent (inout) :: dt
             real*8, intent (out)   :: ynew
-            real*8                 :: yaux, err
+            real*8                 :: yaux, e_calc
 
             dt = max (dt, dt_min)
             call integr(t, y, dt,       dydt, ynew)
             call integr(t, y, dt * 0.5, dydt, yaux)
 
-            err =  norm2 ((/ynew - yaux/)) / (2.**p - 1.)
-            if (err < e_tol) then
-                dt = max (beta * dt * (e_tol / err)**(1./real (p)), dt_min)
+            e_calc =  norm2 ((/ynew - yaux/)) / (2.**p - 1.)
+            if (e_calc < e_tol) then
+                dt = max (beta * dt * (e_tol / e_calc)**(1./real (p)), dt_min)
             else
-                dt = beta * dt * (e_tol / err)**(1./real (p + 1))
+                dt = beta * dt * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt)) .or. (dt <= dt_min)) then
                     dt = dt_min
                     call integr(t, y, dt, dydt, ynew)

@@ -1,5 +1,6 @@
 module const
-    
+
+    implicit none    
     real*8, parameter  :: G      = 0.01720209895**2 ! [AU³ days⁻² Ms⁻¹]
     real*8, parameter  :: PI     = 4. * atan (1.)   ! [rad]
     real*8, parameter  :: TWOPI  = 2. * PI          ! [rad]

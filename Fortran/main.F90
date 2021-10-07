@@ -1,6 +1,8 @@
 module rkall
+
     use integrators
     use tidall
+
     implicit none
        
     contains
@@ -24,12 +26,12 @@ module rkall
             real*8, dimension (:,:), intent(in) :: m
             real*8, intent (out)                :: a1out, e1out, s1out, o1out, s0out, o0out
 
-            call rksolve(t, a1, dt, dadt,  m, a1out)
-            call rksolve(t, e1, dt, dedt,  m, e1out)
-            call rksolve(t, s1, dt, ds1dt, m, s1out)
-            call rksolve(t, o1, dt, do1dt, m, o1out)
-            call rksolve(t, s0, dt, ds0dt, m, s0out)
-            call rksolve(t, o0, dt, do0dt, m, o0out)
+            call rksolve (t, a1, dt, dadt,  m, a1out)
+            call rksolve (t, e1, dt, dedt,  m, e1out)
+            call rksolve (t, s1, dt, ds1dt, m, s1out)
+            call rksolve (t, o1, dt, do1dt, m, o1out)
+            call rksolve (t, s0, dt, ds0dt, m, s0out)
+            call rksolve (t, o0, dt, do0dt, m, o0out)
         end subroutine rksolve_tidal
 
         recursive subroutine rec_rk_adap_tidal (t, dt, integr, p, e_tol, beta, dt_min, a10, e10, s10, o10, s00, o00)
@@ -40,17 +42,17 @@ module rkall
             real*8, intent (inout) :: dt
             real*8, intent (out)   :: a10, e10, s10, o10, s00, o00
             real*8                 :: a11, e11, s11, o11, s01, o01
-            real*8                 :: err
+            real*8                 :: e_calc
 
             dt = max (dt, dt_min)
-            call integ_tidal(t, dt, integr, a10, e10, s10, o10, s00, o00)
-            call integ_tidal(t, dt * 0.5, integr, a11, e11, s11, o11, s01, o01)
+            call integ_tidal (t, dt, integr, a10, e10, s10, o10, s00, o00)
+            call integ_tidal (t, dt * 0.5, integr, a11, e11, s11, o11, s01, o01)
 
-            err = norm2 ((/a10-a11, e10-e11, s10-s11, o10-o11, s00-s01, o00-o01/)) / (2.**p - 1.)
-            if (err < e_tol) then
-                dt = max (beta * dt * (e_tol / err)**(1./real (p)), dt_min)
+            e_calc = norm2 ((/a10-a11, e10-e11, s10-s11, o10-o11, s00-s01, o00-o01/)) / (2.**p - 1.)
+            if (e_calc < e_tol) then
+                dt = max (beta * dt * (e_tol / e_calc)**(1./real (p)), dt_min)
             else
-                dt = beta * dt * (e_tol / err)**(1./real (p + 1))
+                dt = beta * dt * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt)) .or. (dt <= dt_min)) then
                     dt = dt_min
                     call integ_tidal (t, dt, integr, a10, e10, s10, o10, s00, o00)
@@ -66,16 +68,16 @@ module rkall
             real*8, intent (inout)             :: dt
             real*8, intent (out)               :: a10, e10, s10, o10, s00, o00
             real*8                             :: a11, e11, s11, o11, s01, o01
-            real*8                             :: err
+            real*8                             :: e_calc
             real*8, dimension(:), allocatable  :: rka, rke, rks1, rko1, rks0, rko0
             real*8, parameter, dimension(49)   :: &
-            m =  (/  0.,         0.,         0.,          0.,           0.,      0.,    0., & !k1
-               &   0.25,       0.25,         0.,          0.,           0.,      0.,    0., & !k2
-               &  0.375,      3/32.,      9/32.,          0.,           0.,      0.,    0., & !k3
-               & 12/13., 1932/2197., 7200/2197.,  7296/2197.,           0.,      0.,    0., & !k4
-               &     1.,   439/216.,        -8.,   3680/513.,   -845/4104.,      0.,    0., & !k5
-               &    0.5,     -8/27.,        -2., -3544/2565.,   1859/4104., -11/40.,    0., & !k6
-               &     0.,    16/135.,         0., 6656/12825., 28561/56430.,   -0.18, 2/55. /) !y
+            m =  (/  0.,         0.,          0.,          0.,           0.,      0.,    0., & !k1
+               &   0.25,       0.25,          0.,          0.,           0.,      0.,    0., & !k2
+               &  0.375,      3/32.,       9/32.,          0.,           0.,      0.,    0., & !k3
+               & 12/13., 1932/2197., -7200/2197.,  7296/2197.,           0.,      0.,    0., & !k4
+               &     1.,   439/216.,         -8.,   3680/513.,   -845/4104.,      0.,    0., & !k5
+               &    0.5,     -8/27.,          2., -3544/2565.,   1859/4104., -11/40.,    0., & !k6
+               &     0.,    16/135.,          0., 6656/12825., 28561/56430.,   -0.18, 2/55. /) !y
             real*8, parameter, dimension(6)    :: &
                & c0 = (/25/216., 0.,  1408/2565.,   2197/4104.,  -0.2,    0./), &
                & c1 = (/16/135., 0., 6656/12825., 28561/56430., -0.18, 2/55./)
@@ -83,12 +85,12 @@ module rkall
 
             dt = max (dt, dt_min)
 
-            call get_rks(t, a1, dt, dadt,  reshape (m, shape=(/7,7/)), rka)
-            call get_rks(t, e1, dt, dedt,  reshape (m, shape=(/7,7/)), rke)
-            call get_rks(t, s1, dt, ds1dt, reshape (m, shape=(/7,7/)), rks1)
-            call get_rks(t, o1, dt, do1dt, reshape (m, shape=(/7,7/)), rko1)
-            call get_rks(t, s0, dt, ds0dt, reshape (m, shape=(/7,7/)), rks0)
-            call get_rks(t, o0, dt, do0dt, reshape (m, shape=(/7,7/)), rko0)
+            call get_rks (t, a1, dt, dadt,  reshape (m, shape=(/7,7/)), rka)
+            call get_rks (t, e1, dt, dedt,  reshape (m, shape=(/7,7/)), rke)
+            call get_rks (t, s1, dt, ds1dt, reshape (m, shape=(/7,7/)), rks1)
+            call get_rks (t, o1, dt, do1dt, reshape (m, shape=(/7,7/)), rko1)
+            call get_rks (t, s0, dt, ds0dt, reshape (m, shape=(/7,7/)), rks0)
+            call get_rks (t, o0, dt, do0dt, reshape (m, shape=(/7,7/)), rko0)
 
             a11  = a1 + dt * dot_product (c0, rka)
             e11  = e1 + dt * dot_product (c0, rke)
@@ -103,14 +105,14 @@ module rkall
             s00  = s0 + dt * dot_product (c1, rks0)
             o00  = o0 + dt * dot_product (c1, rko0)
 
-            err = norm2 ((/a10-a11, e10-e11, s10-s11, o10-o11, s00-s01, o00-o01/))
-            if (err < e_tol) then
-                dt = max (beta * dt * (e_tol / err)**0.25, dt_min)
+            e_calc = norm2 ((/a10-a11, e10-e11, s10-s11, o10-o11, s00-s01, o00-o01/))
+            if (e_calc < e_tol) then
+                dt = max (beta * dt * (e_tol / e_calc)**0.25, dt_min)
             else
-                dt = beta * dt * (e_tol / err)**0.2
+                dt = beta * dt * (e_tol / e_calc)**0.2
                 if ((isnan (dt)) .or. (dt < dt_min)) then
                     dt = dt_min
-                    call rksolve_tidal(t, dt, reshape(m, (/7,7/)), a10, e10, s10, o10, s00, o00) 
+                    call rksolve_tidal (t, dt, reshape (m, (/7,7/)), a10, e10, s10, o10, s00, o00) 
                 else
                     call rec_rk4_5_tidal (t, dt, e_tol, beta, dt_min, a10, e10, s10, o10, s00, o00)
                 end if 
@@ -157,7 +159,7 @@ n_points = 3500           ! N_output
 
 !Integration conditions
 beta   = 0.95 ! Learning rate
-e_tol  = 1e-5 ! Approx Absolute error (|Ysol - Ypred|)
+e_tol  = 1e-7 ! Approx Absolute e_calcor (|Ysol - Ypred|)
 
 !Output
 filename = "Salida2.txt"
@@ -169,8 +171,8 @@ m1p   = (m0 * m1) / (m0 + m1)     ! []
 mu    = G * (m0 + m1)             ! [AU³ days⁻²]
 C0    = alpha0 * m0 * radius0**2  ! [Ms AU²]
 C1    = alpha1 * m1 * radius1**2  ! [Ms AU²]
-K0    = Ki(a1, m1, radius0, Q0)   ! [?]
-K1    = Ki(a1, m0, radius1, Q1)   ! [?]
+K0    = Ki (a1, m1, radius0, Q0)   ! [?]
+K1    = Ki (a1, m0, radius1, Q1)   ! [?]
 ! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
 Logt   = exp (log (tf - t0) / (n_points - 1))
@@ -224,7 +226,7 @@ do while (t < tf)
     n1   = ni (a1)
     AM   = AngMom (a1, e1)
     
-    call set_cosos(o0, o1, cos0, cos1)
+    call set_cosos (o0, o1, cos0, cos1)
     call set_fs (e1, fe1, fe2, fe3, fe4, fe5)
     
     ! call integ_tidal (t, dt, rungek4, a10, e10, s10, o10, s00, o00)

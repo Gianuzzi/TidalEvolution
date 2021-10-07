@@ -1,4 +1,5 @@
 module tidall
+
     use const
     use f_funcs
 
@@ -16,8 +17,7 @@ module tidall
     real*8 :: cos0, cos1                     ! cos (o_i)
     real*8 :: fe1, fe2, fe3, fe4, fe5        ! f_i (e)
     real*8 :: a11, e11, s11, o11, o01, s01   ! Iteration variables for adaptive
-    ! real*8 :: arr(6)                        ! array with parameters
-    real*8 :: e_tol, dt_min, beta, err       ! For adaptive step
+    real*8 :: e_tol, dt_min, beta, e_calc       ! For adaptive step
     
     contains
 
