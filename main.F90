@@ -28,13 +28,13 @@ Q1      = 1.e5            ! [?]
 
 ! Run conditions
 t0       = 0. * YR2DAY    ! [days]
-dt       = 10. * YR2DAY   ! [days] ![First & min]
+dt       = 1. * YR2DAY   ! [days] ![First & min]
 tf       = 1.e10 * YR2DAY ! [days]
 n_points = 3500           ! N_output
 
 ! Integration conditions
 beta   = 0.95 ! Learning rate
-e_tol  = 1e-7 ! Approx Absolute e_calc (|Ysol - Ypred|)
+e_tol  = 1e-6 ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
 filename = "Salida.txt"
@@ -48,6 +48,7 @@ C0    = alpha0 * m0 * radius0**2  ! [Ms AU²]
 C1    = alpha1 * m1 * radius1**2  ! [Ms AU²]
 K0    = Ki (a1, m1, radius0, Q0)  ! [?]
 K1    = Ki (a1, m0, radius1, Q1)  ! [?]
+
 ! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
 Logt   = exp (log (tf - t0) / (n_points - 1))
@@ -99,20 +100,34 @@ open (10, file=trim (filename), status='replace')
 
 ! Initial parameters
 call set_y (a1, e1, s1, o1, s0, o0, y)
-t      = t0
-t_out  = t0 + t_add
-dt_min = dt
-i      = 0
+t       = t0
+t_out   = t0 + t_add
+dt_min  = dt
+dt_adap = dt ! For adaptive step
+i       = 0
 
 
 ! Do loop
 do while (t < tf)
     
-    !!! Execute an integration method (uncomment one of theese)
-    ! call integ_caller (t, y, dt, dydtidal, rungek4, ynew)
-    !call rec_rk_adap (t, y, dt, dydtidal, rungek4, 4, e_tol, beta, dt_min, ynew)
-    call rec_rk4_5 (t, y, dt, dydtidal, e_tol, beta, dt_min, ynew)
+    ! CHECK
+    if (any (((y - y) .ne. 0.d0)) .or. (y(1) < 0)) then
+        write (*,*) "End of RUN. [Encounter]"
+        exit
+    end if
     
+    ! Output    
+    if (t >= t_out) then        
+        t_add = t_add * Logt
+        t_out = t0 + t_add
+        write (*, "(I11, 8(E14.4, 1X))") i, y(1), y(2), y(3), y(4), y(5), y(6), t / YR2DAY, dt / YR2DAY
+        write (10,*) y(1), y(2), y(3), y(4), y(5), y(6), t
+    end if
+    
+    !!! Execute an integration method (uncomment one of theese)
+!     call integ_caller (t, y, dt, dydtidal, rungek4, ynew)
+!     call rec_rk_adap (t, y, dt_adap, dydtidal, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
+     call rec_rk4_5 (t, y, dt_adap, dydtidal, e_tol, beta, dt_min, dt, ynew)
     
     ! Modulate obliquity angles
     ynew(4) = mod (ynew(4), TWOPI)
@@ -121,19 +136,8 @@ do while (t < tf)
     ! Update parameters
     i = i + 1
     t = t + dt
-    y = ynew
+    y = ynew    
     
-    ! Output
-    if (t >= t_out) then
-        if ((isnan (y(1))) .or. (y(1) < 0)) then
-            write (*,*) "End of RUN. [Encounter]"
-            exit
-        end if
-        t_add = t_add * Logt
-        t_out = t0 + t_add
-        write (*, "(I11, 8(E14.4, 1X))") i, y(1), y(2), y(3), y(4), y(5), y(6), t / YR2DAY, dt / YR2DAY
-        write (10,*) y(1), y(2), y(3), y(4), y(5), y(6), t
-    end if
 end do
 !------------------------------------------------------
 

@@ -16,7 +16,7 @@ module tidall
     real*8 :: cos0, cos1, sin0, sin1         ! cos (o_i) & sin (o_i)
     real*8 :: fe1, fe2, fe3, fe4, fe5        ! f_i (e)
 
-    real*8, dimension(6) :: y, ynew          ! Parameters array, P/a for iteration    
+    real*8, dimension(6) :: y, ynew          ! Parameters array, P/a for iteration
     
     contains
 
