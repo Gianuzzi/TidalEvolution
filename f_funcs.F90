@@ -14,7 +14,7 @@ module f_funcs
 
         real*8 function f1_l (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
                 f = (1. + &
                 & 3.0 * e**2 + &
                 & 0.375 * e**4) / &
@@ -23,7 +23,7 @@ module f_funcs
 
         real*8 function f2_l (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = (1. + &
             & 7.5 * e**2 + &
             & 5.625 * e**4 + &
@@ -33,7 +33,7 @@ module f_funcs
         
         real*8 function f3_l (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = (1. + &
             & 15.5 * e**2 + &
             & 31.875 * e**4 + &
@@ -44,7 +44,7 @@ module f_funcs
         
         real*8 function f4_l (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = (1. + &
             & 1.5 * e**2 + &
             & 0.125 * e**4) / &
@@ -53,7 +53,7 @@ module f_funcs
         
         real*8 function f5_l (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = (1. + &
             & 3.75 * e**2 + &
             & 1.875 * e**4 + &
@@ -63,31 +63,31 @@ module f_funcs
 
         real*8 function f1_s (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = 1. + 7.5 * e**2
         end function f1_s
 
         real*8 function f2_s (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = 1. + 13.5 * e**2
         end function f2_s
 
         real*8 function f3_s (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = 1. + 23. * e**2
         end function f3_s
 
         real*8 function f4_s (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = 1. + 6.5 * e**2
         end function f4_s
 
         real*8 function f5_s (e) result (f)
             implicit none
-            real*8, intent (in) :: e
+            real*8, intent(in) :: e
             f = 1. + 10.25 * e**2
         end function f5_s
 
