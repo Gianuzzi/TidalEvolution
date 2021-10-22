@@ -78,7 +78,7 @@ end if
 
 open (20, file=trim (filename)//".params", status='replace')
 write (20, '(17(A,1X))') "m0", "r0", "al0", "Q0", "m1", "r1", "al1", "Q1", &
-                       & "a1", "e1", "s1", "s1", "s0", "o0", &
+                       & "a1", "e1", "s1", "o1", "s0", "o0", &
                        & "t0", "dt", "tf"
 write (20,'(17(E16.9,1X))') m0, radius0, alpha0, Q0, &
                           & m1, radius1, alpha1, Q1, &
