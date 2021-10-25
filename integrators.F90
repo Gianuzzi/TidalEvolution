@@ -481,19 +481,13 @@ module integrators
             real*8, dimension((size (m,1) - 1), size (y)) :: rk
             procedure(dydt_tem)                           :: dydt
             real*8, dimension(size (y)), intent(out)      :: ynew
-!            real*8, dimension(size (y))                   :: rkaux
             integer                                       :: i 
             
             call get_rks (t, y, dt, dydt, m, rk)
             
-!            rkaux = 0.
-!            do i = 1, (size (m,1) - 1)
-!                rkaux = rkaux + m(1+i,size (m, 1)) * rk(i,:)                    
-!            end do
-!            ynew = y + dt * rkaux
-             do i = 1, size (y)
-                 ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
-             end do
+            do i = 1, size (y)
+                ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
+            end do
         end subroutine rksolve
 
         subroutine euler_forward (t, y, dt, dydt, ynew)
@@ -759,17 +753,18 @@ module integrators
 
             dt_adap = max (dt_adap, dt_min)
             call get_rks (t, y, dt_adap, dydt, reshape (m, shape=(/7,7/)), rk)
-
+            
             do i = 1, size (y)
                 yaux(i) = y(i) + dt_adap * dot_product ((/25/216., 0.,  1408/2565.,   2197/4104.,  -0.2,    0./), rk(:,i))
                 ynew(i) = y(i) + dt_adap * dot_product ((/16/135., 0., 6656/12825., 28561/56430., -0.18, 2/55./), rk(:,i))
             end do
-            
-            e_calc = norm2 ((/ynew - yaux/))
+
+
+            e_calc = norm2 (ynew - yaux)            
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**0.25, dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
+                ! dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
                 
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**0.2
@@ -800,11 +795,11 @@ module integrators
             call integ (t, y,       dt_adap, dydt, ynew)
             call integ (t, y, 0.5 * dt_adap, dydt, yaux)
 
-            e_calc =  norm2 ((/ynew - yaux/)) / (2.**p - 1.)
+            e_calc =  norm2 (ynew - yaux) / (2.**p - 1.)
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_min)
+                ! dt_adap = max (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_min)
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
