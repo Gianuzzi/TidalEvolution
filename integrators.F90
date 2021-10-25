@@ -59,7 +59,7 @@ module integrators
         subroutine integ_tem_i (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)               :: t, dt
-            real*8, intent(inout)            :: ynew
+            real*8, intent(out)              :: ynew
             real*8, dimension(:), intent(in) :: y
             procedure(dydt_i_tem)            :: dydt
         end subroutine integ_tem_i
@@ -103,34 +103,34 @@ module integrators
         subroutine integ_tem_w (t, y, dt, dydt, integ, ynew)
             import :: dydt_i
             implicit none
-            real*8, intent(in)                         :: t, dt
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            procedure(integ_tem)                       :: integ
-            real*8, dimension(size (y)), intent(inout) :: ynew
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
         end subroutine integ_tem_w
 
         ! Same as before, but for rec_rk4_5
         subroutine rec_rk4_5_w (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             import :: dydt_i
             implicit none
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            real*8, intent(inout)                      :: dt_adap, dt_used 
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            real*8, intent(inout)                    :: dt_adap, dt_used 
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
         end subroutine rec_rk4_5_w
         
         ! Same as before, but for rec_rk_adap
         subroutine rec_rk_adap_w (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             import :: dydt_i
-            integer, intent(in)                        :: p
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            procedure(integ_tem)                       :: integ
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew
-            real*8, intent(inout)                      :: dt_adap, dt_used        
+            integer, intent(in)                      :: p
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, intent(inout)                    :: dt_adap, dt_used        
         end subroutine rec_rk_adap_w
 
     end interface
@@ -143,11 +143,11 @@ module integrators
 
         subroutine get_rks_1D (t, y, dt, dydt, m, rk)
             implicit none
-            real*8, intent(in)                                  :: t, y, dt
-            real*8, dimension(:,:), intent(in)                  :: m
-            real*8, dimension((size (m, 1) - 1)), intent(inout) :: rk
-            procedure(dydt_tem_1D)                              :: dydt
-            integer                                             :: i
+            real*8, intent(in)                                :: t, y, dt
+            real*8, dimension(:,:), intent(in)                :: m
+            real*8, dimension((size (m, 1) - 1)), intent(out) :: rk
+            procedure(dydt_tem_1D)                            :: dydt
+            integer                                           :: i
 
             do i = 1, size (m, 1) - 1
                 rk(i) = dydt (t + m(1,i) * dt, y + dt * dot_product (m(2:,i), rk))
@@ -381,13 +381,13 @@ module integrators
 
         recursive subroutine rec_rk4_5_1D (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
-            procedure(dydt_tem_1D)            :: dydt
-            real*8, intent(in)                :: y, t, e_tol, beta, dt_min
-            real*8, intent(inout)             :: dt_adap, dt_used
-            real*8, intent(out)               :: ynew
-            real*8                            :: yaux, e_calc
-            real*8, dimension(6)              :: rk
-            real*8, parameter, dimension(49)  :: m = &
+            procedure(dydt_tem_1D)           :: dydt
+            real*8, intent(in)               :: y, t, e_tol, beta, dt_min
+            real*8, intent(inout)            :: dt_adap, dt_used
+            real*8, intent(out)              :: ynew
+            real*8                           :: yaux, e_calc
+            real*8, dimension(6)             :: rk
+            real*8, parameter, dimension(49) :: m = &
             & (/  0.,         0.,          0.,          0.,           0.,      0.,    0., & !k1
             &   0.25,       0.25,          0.,          0.,           0.,      0.,    0., & !k2
             &  0.375,      3/32.,       9/32.,          0.,           0.,      0.,    0., & !k3
@@ -456,13 +456,13 @@ module integrators
 
         subroutine get_rks (t, y, dt, dydt, m, rk)
             implicit none
-            real*8, intent(in)                                           :: t, dt
-            real*8, dimension(:), intent(in)                             :: y
-            real*8, dimension(:,:), intent(in)                           :: m
-            real*8, dimension((size (m,1) - 1), size (y)), intent(inout) :: rk ! In columns
-            real*8, dimension(size (y))                                  :: rkaux
-            procedure(dydt_tem)                                          :: dydt
-            integer                                                      :: i, j
+            real*8, intent(in)                                         :: t, dt
+            real*8, dimension(:), intent(in)                           :: y
+            real*8, dimension(:,:), intent(in)                         :: m
+            real*8, dimension((size (m,1) - 1), size (y)), intent(out) :: rk ! In columns
+            real*8, dimension(size (y))                                :: rkaux
+            procedure(dydt_tem)                                        :: dydt
+            integer                                                    :: i, j
             
             do i = 1, size (m, 1) - 1 ! Rows
                 rkaux = 0.
@@ -481,19 +481,13 @@ module integrators
             real*8, dimension((size (m,1) - 1), size (y)) :: rk
             procedure(dydt_tem)                           :: dydt
             real*8, dimension(size (y)), intent(out)      :: ynew
-!            real*8, dimension(size (y))                   :: rkaux
             integer                                       :: i 
             
             call get_rks (t, y, dt, dydt, m, rk)
             
-!            rkaux = 0.
-!            do i = 1, (size (m,1) - 1)
-!                rkaux = rkaux + m(1+i,size (m, 1)) * rk(i,:)                    
-!            end do
-!            ynew = y + dt * rkaux
-             do i = 1, size (y)
-                 ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
-             end do
+            do i = 1, size (y)
+                ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
+            end do
         end subroutine rksolve
 
         subroutine euler_forward (t, y, dt, dydt, ynew)
@@ -739,16 +733,16 @@ module integrators
 
         recursive subroutine rec_rk4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            real*8, intent(inout)                      :: dt_adap, dt_used
-            real*8, dimension(:), intent(in)           :: y
-            real*8, dimension(size (y))                :: yaux
-            real*8, dimension(6, size (y))             :: rk
-            procedure(dydt_tem)                        :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew            
-            real*8                                     :: e_calc
-            integer                                    :: i
-            real*8, parameter, dimension(49)           :: m = &
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            real*8, intent(inout)                    :: dt_adap, dt_used
+            real*8, dimension(:), intent(in)         :: y
+            real*8, dimension(size (y))              :: yaux
+            real*8, dimension(6, size (y))           :: rk
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew            
+            real*8                                   :: e_calc
+            integer                                  :: i
+            real*8, parameter, dimension(49)         :: m = &
                & (/  0.,         0.,          0.,          0.,           0.,      0.,    0., & !k1
                &   0.25,       0.25,          0.,          0.,           0.,      0.,    0., & !k2
                &  0.375,      3/32.,       9/32.,          0.,           0.,      0.,    0., & !k3
@@ -759,17 +753,18 @@ module integrators
 
             dt_adap = max (dt_adap, dt_min)
             call get_rks (t, y, dt_adap, dydt, reshape (m, shape=(/7,7/)), rk)
-
+            
             do i = 1, size (y)
                 yaux(i) = y(i) + dt_adap * dot_product ((/25/216., 0.,  1408/2565.,   2197/4104.,  -0.2,    0./), rk(:,i))
                 ynew(i) = y(i) + dt_adap * dot_product ((/16/135., 0., 6656/12825., 28561/56430., -0.18, 2/55./), rk(:,i))
             end do
-            
-            e_calc = norm2 ((/ynew - yaux/))
+
+
+            e_calc = norm2 (ynew - yaux)            
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**0.25, dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
+                ! dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
                 
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**0.2
@@ -786,25 +781,25 @@ module integrators
 
         recursive subroutine rec_rk_adap (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
-            integer, intent(in)                        :: p
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            procedure(integ_tem)                       :: integ
-            real*8, dimension(:), intent(in)           :: y
-            real*8, dimension(size (y))                :: yaux
-            procedure(dydt_tem)                        :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew
-            real*8, intent(inout)                      :: dt_adap, dt_used
-            real*8                                     :: e_calc
+            integer, intent(in)                      :: p
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(:), intent(in)         :: y
+            real*8, dimension(size (y))              :: yaux
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, intent(inout)                    :: dt_adap, dt_used
+            real*8                                   :: e_calc
 
             dt_adap  = max (dt_adap, dt_min)
             call integ (t, y,       dt_adap, dydt, ynew)
             call integ (t, y, 0.5 * dt_adap, dydt, yaux)
 
-            e_calc =  norm2 ((/ynew - yaux/)) / (2.**p - 1.)
+            e_calc =  norm2 (ynew - yaux) / (2.**p - 1.)
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_min)
+                ! dt_adap = max (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_min)
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
@@ -866,11 +861,11 @@ module integrators
         !     --> integ (t, y__, dt, Faux__, ynew__) --> ynew__
         subroutine integ_wrapper (t, y, dt, dydt, integ, ynew)
             implicit none
-            real*8, intent(in)                         :: t, dt
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            procedure(integ_tem)                       :: integ
-            real*8, dimension(size (y)), intent(inout) :: ynew
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
 
             call integ (t, y, dt, Faux, ynew)
 
@@ -889,11 +884,11 @@ module integrators
         ! Same as before, but for rec_rk4_5_wrapper integrator
         subroutine rec_rk4_5_wrapper (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            real*8, intent(inout)                      :: dt_adap, dt_used
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            real*8, intent(inout)                    :: dt_adap, dt_used
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
 
             call rec_rk4_5 (t, y, dt_adap, Faux, e_tol, beta, dt_min, dt_used, ynew)
 
@@ -913,13 +908,13 @@ module integrators
         ! Same as before, but for rec_rk_adap integrator
         subroutine rec_rk_adap_wrapper (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
-            integer, intent(in)                        :: p
-            real*8, intent(in)                         :: t, e_tol, beta, dt_min
-            procedure(integ_tem)                       :: integ
-            real*8, dimension(:), intent(in)           :: y
-            type(dydt_i), dimension(size (y))          :: dydt
-            real*8, dimension(size (y)), intent(inout) :: ynew
-            real*8, intent(inout)                      :: dt_adap, dt_used
+            integer, intent(in)                      :: p
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, intent(inout)                    :: dt_adap, dt_used
             
             call rec_rk_adap (t, y, dt_adap, Faux, integ, p, e_tol, beta, dt_min, dt_used, ynew)
 

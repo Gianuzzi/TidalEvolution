@@ -6,48 +6,54 @@ use integrators
 
 implicit none
 !------------------ INPUT PARAMETERS ------------------
-
 ! Objects
 !! Object 0
-m0      = 1.0             ! [Ms]
-s0      = TWOPI / 28.     ! [rad day⁻¹]
-o0      = 25. * PI / 180. ! [rad]
-radius0 = 695700. * KM2UA ! [UA]
-alpha0  = 0.4             ! []
-Q0      = 1.e6            ! [?]
+m(1)   = 1.0             ! [Ms]
+s0     = TWOPI / 28.     ! [rad day⁻¹]
+o0     = 25. * DEG2RAD   ! [rad]
+r(1)   = RS2UA           ! [UA]
+alp(1) = 0.4             ! []
+Q(1)   = 1.e6            ! [?]
 
 !! Object 1
-m1      = 1. * MJ2MS      ! [Ms]
-a1      = 0.05            ! [UA] 
-e1      = 0.1             ! []
-s1      = TWOPI / 0.01    ! [rad day⁻¹]
-o1      = 80. * PI / 180. ! [rad]
-radius1 = 69911. * KM2UA  ! [UA]
-alpha1  = 0.4             ! []
-Q1      = 1.e5            ! [?]
+m(2)   = MT2MS           ! [Ms]
+a1     = 0.05            ! [UA] 
+e1     = 0.1             ! []
+s1     = TWOPI / 0.01    ! [rad day⁻¹]
+o1     = 80. * DEG2RAD   ! [rad]
+vp1    = 0.              ! [rad]
+r(2)   = RT2UA           ! [UA]
+alp(2) = 0.4             ! []
+Q(2)   = 1.e2            ! [?]
+
+!! Object 2
+m(3)   = MJ2MS           ! [Ms]
+a2     = 0.2             ! [UA] 
+e2     = 0.1             ! []
+s2     = TWOPI / 0.01    ! [rad day⁻¹]
+o2     = 40. * DEG2RAD   ! [rad]
+vp2    = PI              ! [rad]
+r(3)   = RJ2UA           ! [UA]
+alp(3) = 0.4             ! []
+Q(3)   = 1.e5            ! [?]
 
 ! Run conditions
 t0       = 0. * YR2DAY    ! [days]
-dt       = 1. * YR2DAY   ! [days] ![First & min]
+dt       = 1. * YR2DAY    ! [days] ![First & min]
 tf       = 1.e10 * YR2DAY ! [days]
-n_points = 3500           ! N_output
+n_points = 5000           ! N_output
 
 ! Integration conditions
-beta   = 0.95 ! Learning rate
-e_tol  = 1e-6 ! Approx Absolute e_calc (|Ysol - Ypred|)
+beta   = 0.95  ! Learning rate
+e_tol  = 1e-11 ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
 filename = "Salida.txt"
 !------------------------------------------------------
 
-!-------------- DERIVED GLOBAL PARAMETERS --------------
-! Calculated constants
-m1p   = (m0 * m1) / (m0 + m1)     ! []
-mu    = G * (m0 + m1)             ! [AU³ days⁻²]
-C0    = alpha0 * m0 * radius0**2  ! [Ms AU²]
-C1    = alpha1 * m1 * radius1**2  ! [Ms AU²]
-K0    = Ki (a1, m1, radius0, Q0)  ! [?]
-K1    = Ki (a1, m0, radius1, Q1)  ! [?]
+!-------------- SET DERIVED PARAMETERS --------------
+! Set almos everything
+call set_initial_params ((/a1, a2/), Q, alp, r, m, C, mu, mp, n, k2dt, TSk)
 
 ! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
@@ -77,12 +83,19 @@ if (file_exists) then
 end if
 
 open (20, file=trim (filename)//".params", status='replace')
-write (20, '(17(A,1X))') "m0", "r0", "al0", "Q0", "m1", "r1", "al1", "Q1", &
-                       & "a1", "e1", "s1", "s1", "s0", "o0", &
+write (20, '(17(A,1X))') "m0", "r0", "al0", "Q0", &
+                       & "m1", "r1", "al1", "Q1", &
+                       & "m2", "r2", "al2", "Q2", &
+                       & "s0", "o0", &
+                       & "a1", "e1", "s1", "o1", "vp1", &
+                       & "a2", "e2", "s2", "o2", "vp2", &
                        & "t0", "dt", "tf"
-write (20,'(17(E16.9,1X))') m0, radius0, alpha0, Q0, &
-                          & m1, radius1, alpha1, Q1, &
-                          & a1, e1, s1, o1, s0, o0,  &
+write (20,'(17(E16.9,1X))') m(1), r(1), alp(1), Q(1), &
+                          & m(2), r(2), alp(2), Q(2), &
+                          & m(3), r(3), alp(3), Q(3), &
+                          & s0, o0, &
+                          & a1, e1, s1, o1, vp1, &
+                          & a2, e2, s2, o2, vp2, &
                           & t0, dt, tf
 close (20)
 !------------------------------------------------------
@@ -99,44 +112,50 @@ open (10, file=trim (filename), status='replace')
 !------------------------ LOOP ------------------------
 
 ! Initial parameters
-call set_y (a1, e1, s1, o1, s0, o0, y)
+call set_y0 (s0, o0, y0)
+call set_yi (a1, e1, s1, o1, vp1, y1)
+call set_yi (a2, e2, s2, o2, vp2, y2)
+call set_big_y (y0, y1, y2, y)
 t       = t0
 t_out   = t0 + t_add
 dt_min  = dt
 dt_adap = dt ! For adaptive step
 i       = 0
 
-
 ! Do loop
 do while (t < tf)
     
     ! CHECK
-    if (any (((y - y) .ne. 0.d0)) .or. (y(1) < 0)) then
+    !! s0, o0, a1, K1, s1, o1, H1, a2, K2, s2, o2, H2
+    !!  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12
+    if (min (y(3), y(8)) < r(1) * 4.) then
         write (*,*) "End of RUN. [Encounter]"
         exit
     end if
-    
-    ! Output    
-    if (t >= t_out) then        
+
+    ! Output
+    if (t >= t_out) then
         t_add = t_add * Logt
         t_out = t0 + t_add
-        write (*, "(I11, 8(E14.4, 1X))") i, y(1), y(2), y(3), y(4), y(5), y(6), t / YR2DAY, dt / YR2DAY
-        write (10,*) y(1), y(2), y(3), y(4), y(5), y(6), t
+        write (*, "(I11, 4(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY
+        ! write (*, "(A8, 12(E14.4, 1X))") "Valores:", y
+        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt
     end if
     
     !!! Execute an integration method (uncomment one of theese)
-!     call integ_caller (t, y, dt, dydtidal, rungek4, ynew)
-!     call rec_rk_adap (t, y, dt_adap, dydtidal, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-     call rec_rk4_5 (t, y, dt_adap, dydtidal, e_tol, beta, dt_min, dt, ynew)
+    !  call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
+    !  call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
+     call rec_rk4_5 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
     
-    ! Modulate obliquity angles
-    ynew(4) = mod (ynew(4), TWOPI)
-    ynew(6) = mod (ynew(6), TWOPI)
-
+    !! Modulate and avoid too small angles
+    ynew(2)  = max (1.0d-15, mod (ynew(2), TWOPI))
+    ynew(6)  = max (1.0d-15, mod (ynew(6), TWOPI))
+    ynew(11) = max (1.0d-15, mod (ynew(11), TWOPI))
+    
     ! Update parameters
     i = i + 1
     t = t + dt
-    y = ynew    
+    y = ynew
     
 end do
 !------------------------------------------------------
