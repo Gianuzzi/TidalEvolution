@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-name = "Salida.txt"
+name = input("Filename: ")
 
 try:
     data = np.genfromtxt(name)

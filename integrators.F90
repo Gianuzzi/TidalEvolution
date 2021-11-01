@@ -760,10 +760,10 @@ module integrators
             end do
 
 
-            e_calc = norm2 (ynew - yaux)            
+            e_calc = norm2 (ynew - yaux)
             if (e_calc < e_tol) then
                 dt_used = dt_adap
-                dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**0.25, dt_adap * 2.), dt_min)
+                dt_adap = max (dt_adap * min (beta * (e_tol / e_calc)**0.25, 2.), dt_min)
                 ! dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
                 
             else

@@ -39,16 +39,16 @@ Q(3)   = 1.e5            ! [?]
 
 ! Run conditions
 t0       = 0. * YR2DAY    ! [days]
-dt       = 1. * YR2DAY    ! [days] ![First & min]
-tf       = 1.e10 * YR2DAY ! [days]
+dt       = 0.01 * YR2DAY  ! [days] ![First & min]
+tf       = 5.e10 * YR2DAY ! [days]
 n_points = 5000           ! N_output
 
 ! Integration conditions
 beta   = 0.95  ! Learning rate
-e_tol  = 1e-11 ! Approx Absolute e_calc (|Ysol - Ypred|)
+e_tol  = 1e-12 ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
-filename = "Salida.txt"
+filename = "Salida2.txt"
 !------------------------------------------------------
 
 !-------------- SET DERIVED PARAMETERS --------------
@@ -145,7 +145,8 @@ do while (t < tf)
     !!! Execute an integration method (uncomment one of theese)
     !  call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
     !  call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-     call rec_rk4_5 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
+
+    call rec_rk4_5 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
     ynew(2)  = max (1.0d-15, mod (ynew(2), TWOPI))

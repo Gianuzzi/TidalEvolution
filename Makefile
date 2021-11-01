@@ -1,5 +1,5 @@
-FC = gfortran
-MYFFLAGS = -ffinite-math-only -funsafe-math-optimizations -ffast-math -funroll-loops  
+FC = gfortran -g
+MYFFLAGS = -ffinite-math-only -funsafe-math-optimizations -ffast-math -funroll-loops
 FFLAGS = -Wall -Wextra -march=native $(MYFFLAGS)
 MYLDFLAGS = -O3
 LDFLAGS = $(MYLDFLAGS)
@@ -20,4 +20,3 @@ clean:
 	@rm -rf *.o *.mod tidal
 
 .PHONY: clean all
-

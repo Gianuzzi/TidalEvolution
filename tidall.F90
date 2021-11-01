@@ -275,6 +275,38 @@ module tidall
             y10t(5) = de1dt * sin (vp1)          ! d(H1) / dt = d(e1) / dt * sin(vp1)
         end subroutine dydtidal
 
+        ! ! dydtidal0 (y0__, y1__) = ynew__
+        ! subroutine dydtgrav (planet1, planet2, y1, y2, y12g, y21g)
+        !     implicit none
+        !     real*8, dimension(5), intent(in)          :: y1, y2
+        !     integer, intent(in)                       :: planet1, planet2
+        !     real*8                                    :: a1, K1, s1, o1, H1
+        !     real*8                                    :: a2, K2, s2, o2, H2
+        !     real*8                                    :: n1, n2
+        !     real*8                                    :: alpha, factor
+        !     real*8, dimension(size (y1)), intent(out) :: y12g, y21g ! d y1 / dt ; d y2 / dt
+            
+        !     call get_from_yi (y1, a1, K1, s1, o1, H1)
+        !     call get_from_yi (y2, a2, K2, s2, o2, H2)
+            
+        !     alpha  = a1 / a2
+        !     factor = 0.375 * G * alpha / a2**3
+        !     n1     = n_f (a1, mu(planet1 + 1))
+        !     n2     = n_f (a2, mu(planet2 + 1))
+            
+        !     y12g(1) = 0.
+        !     y12g(2) = - factor * m(planet2 + 1) * (2. * H1 - 2.5 * alpha * H2) / n1
+        !     y12g(3) = 0.
+        !     y12g(4) = 0.
+        !     y12g(5) = factor * m(planet2 + 1) * (2. * K1 - 2.5 * alpha * K2) / n1
+
+        !     y21g(1) = 0.
+        !     y21g(2) = - factor * m(planet1 + 1) * (2. * H2 - 2.5 * alpha * H1) / n2
+        !     y21g(3) = 0.
+        !     y21g(4) = 0.
+        !     y21g(5) = factor * m(planet1 + 1) * (2. * K2 - 2.5 * alpha * K1) / n2
+        ! end subroutine dydtgrav
+
         ! dydtidal0 (y0__, y1__) = ynew__
         subroutine dydtgrav (planet1, planet2, y1, y2, y12g, y21g)
             implicit none
@@ -282,29 +314,33 @@ module tidall
             integer, intent(in)                       :: planet1, planet2
             real*8                                    :: a1, K1, s1, o1, H1
             real*8                                    :: a2, K2, s2, o2, H2
-            real*8                                    :: n1, n2
+            real*8                                    :: extra1, extra2
             real*8                                    :: alpha, factor
+            integer                                   :: i1, i2
             real*8, dimension(size (y1)), intent(out) :: y12g, y21g ! d y1 / dt ; d y2 / dt
             
+            i1 = planet1 + 1
+            i2 = planet2 + 1
+
             call get_from_yi (y1, a1, K1, s1, o1, H1)
             call get_from_yi (y2, a2, K2, s2, o2, H2)
             
             alpha  = a1 / a2
-            factor = 0.375 * G * alpha / a2**3
-            n1     = n_f (a1, mu(planet1 + 1))
-            n2     = n_f (a2, mu(planet2 + 1))
+            factor = G * alpha**2 / a2
+            extra1 = m(i2) / (n_f (a1, mu(i1)) * a1**2)
+            extra2 = m(i1) / (n_f (a2, mu(i2)) * a2**2)
             
             y12g(1) = 0.
-            y12g(2) = - factor * m(planet2 + 1) * (2. * H1 - 2.5 * alpha * H2) / n1
+            y12g(2) = - factor * (0.75 * H1 - 0.9375 * alpha * H2) * extra1
             y12g(3) = 0.
             y12g(4) = 0.
-            y12g(5) = factor * m(planet2 + 1) * (2. * K1 - 2.5 * alpha * K2) / n1
+            y12g(5) = factor * (0.75 * K1 - 0.9375 * alpha * K2) * extra1
 
             y21g(1) = 0.
-            y21g(2) = - factor * m(planet1 + 1) * (2. * H2 - 2.5 * alpha * H1) / n2
+            y21g(2) = - factor * (0.75 * H2 - 0.9375 * alpha * H1) * extra2
             y21g(3) = 0.
             y21g(4) = 0.
-            y21g(5) = factor * m(planet1 + 1) * (2. * K2 - 2.5 * alpha * K1) / n2
+            y21g(5) = factor * (0.75 * K2 - 0.9375 * alpha * K1) * extra2
         end subroutine dydtgrav
 
         function dydtidall (t, y) result (ynew)
