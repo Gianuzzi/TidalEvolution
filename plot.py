@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-name = input("Filename: ")
+#name = input("Filename: ")
+name = "Salida4.txt"
 
 try:
     data = np.genfromtxt(name)

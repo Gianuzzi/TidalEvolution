@@ -39,7 +39,7 @@ Q(3)   = 1.e5            ! [?]
 
 ! Run conditions
 t0       = 0. * YR2DAY    ! [days]
-dt       = 0.01 * YR2DAY  ! [days] ![First & min]
+dt       = 0.0001 * YR2DAY  ! [days] ![First & min]
 tf       = 5.e10 * YR2DAY ! [days]
 n_points = 5000           ! N_output
 
@@ -48,7 +48,7 @@ beta   = 0.95  ! Learning rate
 e_tol  = 1e-12 ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
-filename = "Salida2.txt"
+filename = "Salida4.txt"
 !------------------------------------------------------
 
 !-------------- SET DERIVED PARAMETERS --------------
@@ -146,7 +146,7 @@ do while (t < tf)
     !  call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
     !  call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
 
-    call rec_rk4_5 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
+    call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
     ynew(2)  = max (1.0d-15, mod (ynew(2), TWOPI))
