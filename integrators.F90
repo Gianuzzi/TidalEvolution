@@ -1132,7 +1132,7 @@ module integrators
             e_calc =  norm2 (ynew - yaux) / (2.**p - 1.)
             if (e_calc < e_tol) then
                 dt_used = dt_adap
-                dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_adap * 2.), dt_min)
+                dt_adap = max (dt_adap * min (beta * (e_tol / e_calc)**(1./real (p)), 2.), dt_min)
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
