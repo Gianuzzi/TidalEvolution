@@ -12,17 +12,18 @@ f = dydtidall (t, y)
 
 end subroutine derivs
 
-subroutine bs (y,in,time,delt,step,eps)
+subroutine bs (t0,y,delt,in,eps,step,ynew)
 implicit real*8 (a-h,k-z)
-real*8 y(12),f(12)
-
+real*8 y(12),f(12),ynew(12), time
 !
+ynew = y
+time = t0
 tfinal = time + delt
 htry   = step
 do while (time < tfinal)
     if (time+htry > tfinal) htry = tfinal - time
-    call derivs (time,y,f)
-    call bstep  (y,f,in,time,htry,eps,hdid,hnext)
+    call derivs (time,ynew,f)
+    call bstep  (ynew,f,in,time,htry,eps,hdid,hnext)
     htry = hnext
 end do
 step = hnext

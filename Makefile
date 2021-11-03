@@ -29,8 +29,11 @@ $(DEP_FILE):
 	fortdepend -w -o $(DEP_FILE) -f *.F90
 
 clean:
+	@echo "rm -rf *.o *.mod tidal"
 	@rm -rf *.o *.mod tidal
 
 -include $(DEP_FILE)
 depend: $(DEP_FILE)
+
+.PHONY: clean
 

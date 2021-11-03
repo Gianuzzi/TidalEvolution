@@ -138,7 +138,7 @@ do while (t < tf)
     if (t >= t_out) then
         t_add = t_add * Logt
         t_out = t0 + t_add
-        write (*, "(I11, 4(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY
+        write (*, "(I11, 4(E14.4, 1X))") i, t / YR2DAY, dt_adap / YR2DAY
         ! write (*, "(A8, 12(E14.4, 1X))") "Valores:", y
         write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt
     end if
@@ -146,8 +146,8 @@ do while (t < tf)
     !!! Execute an integration method (uncomment one of theese)
     !  call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
     !  call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-
-      call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
+    !  call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
+    call bs (t, y, dt, size (y), e_tol, dt_adap, ynew)
     
     !! Modulate and avoid too small angles
     ynew(2)  = max (1.0d-15, mod (ynew(2), TWOPI))
@@ -155,9 +155,10 @@ do while (t < tf)
     ynew(11) = max (1.0d-15, mod (ynew(11), TWOPI))
     
     ! Update parameters
-    i = i + 1
-    t = t + dt
-    y = ynew
+    i  = i + 1
+    t  = t + dt
+    y  = ynew
+    dt = dt * 1.0001 ! Only if BS
     
 end do
 !------------------------------------------------------
