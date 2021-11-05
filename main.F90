@@ -39,17 +39,17 @@ alp(3) = 0.4             ! []
 Q(3)   = 1.e5            ! [?]
 
 ! Run conditions
-t0       = 0. * YR2DAY    ! [days]
+t0       = 0. * YR2DAY      ! [days]
 dt       = 0.0001 * YR2DAY  ! [days] ![First & min]
-tf       = 5.e10 * YR2DAY ! [days]
-n_points = 5000           ! N_output
+tf       = 5.7e9 * YR2DAY   ! [days]
+n_points = 5000             ! Approx N_output
 
 ! Integration conditions
 beta   = 0.95   ! Learning rate
 e_tol  = 1e-12  ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
-filename = "Salida4.txt"
+filename = "Salida.txt"
 !------------------------------------------------------
 
 !-------------- SET DERIVED PARAMETERS --------------
@@ -123,13 +123,15 @@ dt_min  = dt
 dt_adap = dt ! For adaptive step
 i       = 0
 
+! Aux parameters
+aux1 = r(1) * 4.
+
 ! Do loop
 do while (t < tf)
-    
     ! CHECK
     !! s0, o0, a1, K1, s1, o1, H1, a2, K2, s2, o2, H2
     !!  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12
-    if (min (y(3), y(8)) < r(1) * 4.) then
+    if (min (y(3), y(8)) < aux1) then
         write (*,*) "End of RUN. [Encounter]"
         exit
     end if
@@ -138,27 +140,27 @@ do while (t < tf)
     if (t >= t_out) then
         t_add = t_add * Logt
         t_out = t0 + t_add
-        write (*, "(I11, 4(E14.4, 1X))") i, t / YR2DAY, dt_adap / YR2DAY
+        write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
         ! write (*, "(A8, 12(E14.4, 1X))") "Valores:", y
-        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt
+        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
+        dt = t_out - t  ! -------------  Mainly for BS ---------------- !
     end if
     
     !!! Execute an integration method (uncomment one of theese)
-    !  call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
-    !  call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-    !  call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
-    call bs (t, y, dt, size (y), e_tol, dt_adap, ynew)
+    ! call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
+    ! call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
+    ! call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
+    call bs (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
-    ynew(2)  = max (1.0d-15, mod (ynew(2), TWOPI))
-    ynew(6)  = max (1.0d-15, mod (ynew(6), TWOPI))
-    ynew(11) = max (1.0d-15, mod (ynew(11), TWOPI))
+    ynew(2)  = max (min_val, mod (ynew(2), TWOPI))
+    ynew(6)  = max (min_val, mod (ynew(6), TWOPI))
+    ynew(11) = max (min_val, mod (ynew(11), TWOPI))
     
     ! Update parameters
     i  = i + 1
     t  = t + dt
     y  = ynew
-    dt = dt * 1.0001 ! Only if BS
     
 end do
 !------------------------------------------------------

@@ -4,7 +4,7 @@ module integrators
     type dydt_i
         procedure(dydt_i_tem), pointer, nopass :: f_i => null ()
     end type dydt_i
-    real*8 :: max_iter, e_tol, dt_min, beta  ! For adaptive step and implicit
+    real*8 :: max_iter, e_tol, beta  ! For adaptive step and implicit
 
     abstract interface
 

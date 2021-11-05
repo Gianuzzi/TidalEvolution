@@ -3,7 +3,8 @@ module tidall
     use const
 
     implicit none
-    integer, parameter :: N_bodies = 3
+    integer, parameter :: N_bodies = 3, y0_s = 2, yi_s = 5
+    integer, parameter :: y_s = y0_s + yi_s * (N_bodies - 1)
 
     real*8, dimension(N_bodies) :: m            ! Masses (constants)
     real*8, dimension(N_bodies) :: r, alp, C    ! Bodies constant parameters
@@ -16,10 +17,9 @@ module tidall
     real*8 :: a1, e1, s1, o1, vp1            ! Body 1 parameters
     real*8 :: a2, e2, s2, o2, vp2            ! Body 2 parameters
 
-    real*8, dimension(2)  :: y0              ! Body 0 Parameters array
-    real*8, dimension(5)  :: y1, y2          ! Body 1 and Body 2 Parameters array
-
-    real*8, dimension(2 + 5 * (N_bodies - 1)) :: y, ynew  ! Parameters array, and same for iteration
+    real*8, dimension(y0_s) :: y0       ! Body 0 Parameters array
+    real*8, dimension(yi_s) :: y1, y2   ! Body 1 and Body 2 Parameters array
+    real*8, dimension(y_s)  :: y, ynew  ! Parameters array, and same for iteration
     
     contains
 
@@ -63,13 +63,14 @@ module tidall
     ! SETTERS
         subroutine set_initial_params (a, Q, alpha, radius, m, C, mu, mp, n, k2dt, K)
             implicit none
-            real*8, dimension(:), intent(in)                  :: a, m, Q, alpha, radius
-            real*8, dimension(size (Q)), intent(out)          :: mu, mp, n, C, k2dt
-            real*8, dimension(size (Q), size(Q)), intent(out) :: K
-            integer                                           :: i, j
+            real*8, dimension(N_bodies - 1), intent(in)        :: a
+            real*8, dimension(N_bodies), intent(in)            :: m, Q, alpha, radius
+            real*8, dimension(N_bodies), intent(out)           :: mu, mp, n, C, k2dt
+            real*8, dimension(N_bodies, N_bodies), intent(out) :: K
+            integer                                            :: i, j
             
             K = 0.
-            do i = size (alpha), 1, -1 !Backwards, for n(1) setting
+            do i = N_bodies, 1, -1 !Backwards, for n(1) setting
                 if (i > 1) then
                     mp(i) = mprime_f (sum (m(:(i - 1))), m(i))
                     mu(i) = mu_f (sum (m(:(i - 1))), m(i))                    
@@ -88,7 +89,6 @@ module tidall
                     end if
                 end do
             end do
-
         end subroutine set_initial_params
 
         subroutine set_cosino (o, cosi, sini)
@@ -102,8 +102,8 @@ module tidall
 
         subroutine set_y0 (s0, o0, y0)
             implicit none
-            real*8, intent(in)                :: s0, o0
-            real*8, dimension(2), intent(out) :: y0
+            real*8, intent(in)                   :: s0, o0
+            real*8, dimension(y0_s), intent(out) :: y0
             
             y0(1) = s0
             y0(2) = o0
@@ -111,9 +111,9 @@ module tidall
 
         subroutine set_yi (a, e, s, o, vp, yi)
             implicit none
-            real*8, intent(in)                :: a, e, s, o, vp
-            real*8                            :: K, H
-            real*8, dimension(5), intent(out) :: yi
+            real*8, intent(in)                   :: a, e, s, o, vp
+            real*8                               :: K, H
+            real*8, dimension(yi_s), intent(out) :: yi
             
             call get_KH (e, vp, K, H)
             yi(1) = a
@@ -125,13 +125,13 @@ module tidall
         
         subroutine set_big_y (y0, y1, y2, y)
             implicit none
-            real*8, dimension(2), intent(in)   :: y0
-            real*8, dimension(5), intent(in)   :: y1, y2
-            real*8, dimension(12), intent(out) :: y
+            real*8, dimension(y0_s), intent(in) :: y0
+            real*8, dimension(yi_s), intent(in) :: y1, y2
+            real*8, dimension(y_s), intent(out) :: y
             
-            y(1: 2) = y0
-            y(3: 7) = y1
-            y(8:12) = y2
+            y(: y0_s)                 = y0
+            y(y0_s + 1 : y0_s + yi_s) = y1
+            y(y0_s + yi_s + 1 :)      = y2
         end subroutine set_big_y
 
         subroutine set_fl(e, f1, f2, f3 ,f4, f5)
@@ -184,8 +184,8 @@ module tidall
             
         subroutine get_from_y0 (y0, s0, o0)
             implicit none
-            real*8, intent(out)              :: s0, o0
-            real*8, dimension(2), intent(in) :: y0
+            real*8, intent(out)                 :: s0, o0
+            real*8, dimension(y0_s), intent(in) :: y0
             
             s0 = y0(1)
             o0 = y0(2)
@@ -193,8 +193,8 @@ module tidall
     
         subroutine get_from_yi (yi, a, K, s, o, H)
             implicit none
-            real*8, dimension(5), intent(in) :: yi
-            real*8, intent(out)              :: a, K, s, o, H
+            real*8, dimension(yi_s), intent(in) :: yi
+            real*8, intent(out)                 :: a, K, s, o, H
             
             a = yi(1) 
             K = yi(2) 
@@ -205,23 +205,23 @@ module tidall
         
         subroutine get_from_big_y (y, y0, y1, y2)
             implicit none
-            real*8, dimension(12), intent(in) :: y
-            real*8, dimension(2), intent(out) :: y0
-            real*8, dimension(5), intent(out) :: y1, y2
+            real*8, dimension(y_s), intent(in)   :: y
+            real*8, dimension(y0_s), intent(out) :: y0
+            real*8, dimension(yi_s), intent(out) :: y1, y2
             
-            y0 = y(1: 2)
-            y1 = y(3: 7)
-            y2 = y(8:12)
+            y0 = y(: y0_s)
+            y1 = y(y0_s + 1 : y0_s + yi_s)
+            y2 = y(y0_s + yi_s + 1 :)
         end subroutine get_from_big_y
             
         subroutine get_from_ytidal (ytidal, y0, y1)
             implicit none
-            real*8, dimension(7), intent(in)  :: ytidal
-            real*8, dimension(2), intent(out) :: y0
-            real*8, dimension(5), intent(out) :: y1
+            real*8, dimension(y0_s + yi_s), intent(in) :: ytidal
+            real*8, dimension(y0_s), intent(out)       :: y0
+            real*8, dimension(yi_s), intent(out)       :: y1
                        
-            y0 = ytidal(1:2)
-            y1 = ytidal(3:7)
+            y0 = ytidal(: y0_s)
+            y1 = ytidal(y0_s + 1 :)
         end subroutine get_from_ytidal
     
         
@@ -229,18 +229,18 @@ module tidall
 
         subroutine dydtidal (y0, y1, planet, y01t, y10t)
             implicit none
-            real*8, dimension(2), intent(in)          :: y0
-            real*8, dimension(5), intent(in)          :: y1
-            integer, intent(in)                       :: planet
-            real*8                                    :: s0, o0
-            real*8                                    :: a1, K1, s1, o1, H1
-            real*8                                    :: e1, vp1
-            real*8                                    :: fe1, fe2, fe3, fe4, fe5
-            real*8                                    :: cos0, sin0, cos1, sin1
-            real*8                                    :: n1, de1dt
-            real*8, dimension(size (y0)), intent(out) :: y01t ! d y0 / dt
-            real*8, dimension(size (y1)), intent(out) :: y10t ! d y1 / dt
-            integer                                   :: i
+            real*8, dimension(y0_s), intent(in)  :: y0
+            real*8, dimension(yi_s), intent(in)  :: y1
+            integer, intent(in)                  :: planet
+            real*8                               :: s0, o0
+            real*8                               :: a1, K1, s1, o1, H1
+            real*8                               :: e1, vp1
+            real*8                               :: fe1, fe2, fe3, fe4, fe5
+            real*8                               :: cos0, sin0, cos1, sin1
+            real*8                               :: n1, de1dt
+            real*8, dimension(y0_s), intent(out) :: y01t ! d y0 / dt
+            real*8, dimension(yi_s), intent(out) :: y10t ! d y1 / dt
+            integer                              :: i
             
             i = planet + 1
 
@@ -278,14 +278,14 @@ module tidall
         ! dydtidal0 (y0__, y1__) = ynew__
         subroutine dydtgrav (planet1, planet2, y1, y2, y12g, y21g)
             implicit none
-            real*8, dimension(5), intent(in)          :: y1, y2
-            integer, intent(in)                       :: planet1, planet2
-            real*8                                    :: a1, K1, s1, o1, H1
-            real*8                                    :: a2, K2, s2, o2, H2
-            real*8                                    :: extra1, extra2
-            real*8                                    :: alpha, factor
-            integer                                   :: i1, i2
-            real*8, dimension(size (y1)), intent(out) :: y12g, y21g ! d y1 / dt ; d y2 / dt
+            real*8, dimension(yi_s), intent(in)  :: y1, y2
+            integer, intent(in)                  :: planet1, planet2
+            real*8                               :: a1, K1, s1, o1, H1
+            real*8                               :: a2, K2, s2, o2, H2
+            real*8                               :: extra1, extra2
+            real*8                               :: alpha, factor
+            integer                              :: i1, i2
+            real*8, dimension(yi_s), intent(out) :: y12g, y21g ! d y1 / dt ; d y2 / dt
             
             i1 = planet1 + 1
             i2 = planet2 + 1
@@ -316,10 +316,10 @@ module tidall
             real*8, intent(in)               :: t
             real*8, dimension(:), intent(in) :: y
             real*8, dimension(size (y))      :: ynew
-            real*8, dimension(2)             :: y0
-            real*8, dimension(5)             :: y1, y2
-            real*8, dimension(size (y0))     :: y01t, y02t
-            real*8, dimension(size (y1))     :: y10t, y20t, y12g, y21g
+            real*8, dimension(y0_s)          :: y0
+            real*8, dimension(yi_s)          :: y1, y2
+            real*8, dimension(y0_s)          :: y01t, y02t
+            real*8, dimension(yi_s)          :: y10t, y20t, y12g, y21g
 
             ynew = 0.
             y10t = 0.
@@ -331,9 +331,10 @@ module tidall
             call dydtidal (y0, y1, 1, y01t, y10t)
             call dydtidal (y0, y2, 2, y02t, y20t)
             call dydtgrav (1, 2, y1, y2, y12g, y21g)
-            
-            ynew(1: 2) = y01t + y02t ! d(y0)/dt
-            ynew(3: 7) = y10t + y12g ! d(y1)/dt
-            ynew(8:12) = y20t + y21g ! d(y2)/dt
+
+            ynew(: y0_s)                 = y01t + y02t ! d(y0)/dt
+            ynew(y0_s + 1 : y0_s + yi_s) = y10t + y12g ! d(y1)/dt
+            ynew(y0_s + yi_s + 1 :)      = y20t + y21g ! d(y2)/dt
         end function dydtidall
+        
 end module tidall
