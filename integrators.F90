@@ -4,7 +4,9 @@ module integrators
     type dydt_i
         procedure(dydt_i_tem), pointer, nopass :: f_i => null ()
     end type dydt_i
-    real*8 :: max_iter, e_tol, beta  ! For adaptive step and implicit
+    ! For adaptive step and implicit (might be overwritten)
+    integer :: max_iter = 1000
+    real*8  :: e_tol = 1e-10, beta = 0.9
 
     abstract interface
 
@@ -64,7 +66,7 @@ module integrators
             procedure(dydt_i_tem)            :: dydt
         end subroutine integ_tem_i
 
-        ! in (t, y__, dt, f__, ynew__) -> ynew__, dt
+        ! in (t, y__, dt, f__, ynew__) -> ynew__
         ! Remember that, in this case,
         !  f__ == (f_1, ..., f_N) must be
         !  pre-defined explicitly
@@ -76,18 +78,31 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
         end subroutine integ_tem
 
-        ! in (t, y__, dt, f__, ynew__) -> ynew__, dt
+        ! in (t, y__, dt, f__, max_iter, e_tol, ynew__) -> ynew__
         ! Remember that, in this case,
         !  f__ == (f_1, ..., f_N) must be
         !  pre-defined explicitly
-        subroutine emmbedded_tem (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
+        subroutine implicit_tem (t, y, dt, dydt, max_iter, e_tol, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, dt, e_tol
+            integer, intent(in)                      :: max_iter
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+        end subroutine implicit_tem
+
+        ! in (t, y__, dt_adap, f__, e_tol, beta, dt_min, dt_used, ynew) -> ynew__, dt_used
+        ! Remember that, in this case,
+        !  f__ == (f_1, ..., f_N) must be
+        !  pre-defined explicitly
+        subroutine embedded_tem (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
             real*8, intent(inout)                    :: dt_adap, dt_used
             real*8, dimension(:), intent(in)         :: y
             procedure(dydt_tem)                      :: dydt
             real*8, dimension(size (y)), intent(out) :: ynew
-        end subroutine emmbedded_tem
+        end subroutine embedded_tem
 
         !---------------------------------------------------------------------------------------------
         ! WRAPPERS 
@@ -123,20 +138,32 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
         end subroutine integ_tem_w
 
-        ! Same as before, but for emmbedded_integrators
-        subroutine emmbedded_tem_w (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, integ, ynew)
+        ! Same as before, but for implicit_integrators
+        subroutine implicit_tem_w (t, y, dt, dydt, integ, max_iter, e_tol, ynew)
+            import :: dydt_i
+            implicit none
+            real*8, intent(in)                       :: t, dt, e_tol
+            integer, intent(in)                      :: max_iter
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            procedure(implicit_tem)                  :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
+        end subroutine implicit_tem_w
+
+        ! Same as before, but for embedded_integrators
+        subroutine embedded_tem_w (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, integ, ynew)
             import :: dydt_i
             implicit none
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
             real*8, intent(inout)                    :: dt_adap, dt_used 
             real*8, dimension(:), intent(in)         :: y
             type(dydt_i), dimension(size (y))        :: dydt
-            procedure(emmbedded_tem)                 :: integ
+            procedure(embedded_tem)                 :: integ
             real*8, dimension(size (y)), intent(out) :: ynew
-        end subroutine emmbedded_tem_w
+        end subroutine embedded_tem_w
         
-        ! Same as before, but for rec_rk_adap
-        subroutine rec_rk_adap_w (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+        ! Same as before, but for rk_adap
+        subroutine rk_adap_w (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             import :: dydt_i
             integer, intent(in)                      :: p
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
@@ -145,7 +172,7 @@ module integrators
             type(dydt_i), dimension(size (y))        :: dydt
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, intent(inout)                    :: dt_adap, dt_used        
-        end subroutine rec_rk_adap_w
+        end subroutine rk_adap_w
 
     end interface
 
@@ -420,7 +447,6 @@ module integrators
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**0.25, dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**0.25, dt_min)
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**0.2
                 if ((isnan (dt_adap)) .or. (dt_adap < dt_min)) then
@@ -433,7 +459,7 @@ module integrators
             end if
         end subroutine Fehlberg4_5_1D
 
-        recursive subroutine rec_rk_adap_1D (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+        recursive subroutine rk_adap_1D (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             integer, intent(in)     :: p
             procedure(integ_tem_1D) :: integ
@@ -451,7 +477,6 @@ module integrators
             if (e_calc < e_tol) then
                 dt_used = dt_adap
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_adap * 2.), dt_min)
-!                 dt_adap = max (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_min)                
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**(1./real (p + 1))
                 if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
@@ -459,10 +484,10 @@ module integrators
                     dt_adap = dt_min
                     call integ (t, y, dt_adap, dydt, ynew)
                 else
-                    call rec_rk_adap_1D (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+                    call rk_adap_1D (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
                 end if
             end if
-        end subroutine rec_rk_adap_1D
+        end subroutine rk_adap_1D
 
         !---------------------------------------------------------------------------------------------
         ! ND -> ND
@@ -470,6 +495,7 @@ module integrators
 
         ! IMPLICIT
 
+        !! Solver
         subroutine solve_implicit (t, y, dt, dydt, max_iter, e_tol, y1)
             implicit none
             integer, intent(in)                      :: max_iter
@@ -520,6 +546,7 @@ module integrators
 
         ! RKs
 
+        !! Solver
         subroutine get_rks (t, y, dt, dydt, m, rk)
             implicit none
             real*8, intent(in)                                         :: t, dt
@@ -539,6 +566,7 @@ module integrators
             end do
         end subroutine get_rks
 
+        !! Solver
         subroutine solve_rk (t, y, dt, dydt, m, ynew)
             implicit none
             real*8, intent(in)                            :: t, dt
@@ -773,9 +801,10 @@ module integrators
             call solve_rk (t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
         end subroutine rungek6
 
-        ! EMMBEDDED
+        ! EMBEDDED
 
-        recursive subroutine solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, o1, o2, ynew)
+        !! Solver
+        recursive subroutine solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, o1, o2, ynew)
             implicit none
             real*8, intent(in)                            :: t, e_tol, beta, dt_min
             real*8, intent(inout)                         :: dt_adap, dt_used
@@ -812,10 +841,10 @@ module integrators
                     dt_used = dt_min
                     call solve_rk (t, y, dt_adap, dydt, m, ynew)
                 else
-                    call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, o1, o2, ynew)
+                    call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, o1, o2, ynew)
                 end if 
             end if
-        end subroutine solve_emmbed
+        end subroutine solve_embeed
 
         subroutine Heun_Euler1_2 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
@@ -831,7 +860,7 @@ module integrators
                &   0., 0.5, 0.5  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/3,3/)), maux, 1, 2, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/3,3/)), maux, 1, 2, ynew)
         end subroutine Heun_Euler1_2
 
         subroutine Fehlberg1_2 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -849,7 +878,7 @@ module integrators
                &   0., 1/512., 255/256., 1/512.  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/4,4/)), maux, 1, 2, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/4,4/)), maux, 1, 2, ynew)
         end subroutine Fehlberg1_2
 
         subroutine Bogacki_Shampine2_3 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -868,7 +897,7 @@ module integrators
                &    0., 2/9., 1/3., 4/9., 0.  & !y
                & /)
                
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/5,5/)), maux, 2, 3, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/5,5/)), maux, 2, 3, ynew)
         end subroutine Bogacki_Shampine2_3
 
         subroutine Zonneveld3_4 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -887,7 +916,7 @@ module integrators
                &  0.75, 5/32., 7/32., 13/32., -1/32.,  0., & !k5
                &    0.,  1/6.,  1/3.,   1/3.,   1/6.,  0.  & !y
                & /)
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 3, 4, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 3, 4, ynew)
         end subroutine Zonneveld3_4
 
         subroutine Merson4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -906,7 +935,7 @@ module integrators
                &    1.,   0.5,   0.,   -1.5,  2.,  0., & !k5
                &    0.,   0.1,   0.,    0.3, 0.4, 0.2  & !y
                & /)
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 5, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 5, ynew)
         end subroutine Merson4_5
 
         subroutine Fehlberg4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -927,7 +956,7 @@ module integrators
                &     0.,    16/135.,          0., 6656/12825., 28561/56430.,   -0.18, 2/55.  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
         end subroutine Fehlberg4_5
 
         subroutine Cash_Karp4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -948,7 +977,7 @@ module integrators
                &     0.,     37/378.,       0.,   250/621.,      125/594.,        0., 512/1771.  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
         end subroutine Cash_Karp4_5
 
         subroutine Dormand_Prince4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -971,7 +1000,7 @@ module integrators
                &     0.,     35/384.,           0.,   500/1113.,  125/192.,  -2187/6784., 11/84., 0.  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/8,8/)), maux, 4, 5, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/8,8/)), maux, 4, 5, ynew)
         end subroutine Dormand_Prince4_5
 
         subroutine Verner5_6 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -994,7 +1023,7 @@ module integrators
                &     0.,        0.075,       0.,     875/2244.,     23/72.,    264/1955., 0.,  125/11592., 43/616.  & !y
                & /)
          
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/9,9/)), maux, 5, 6, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/9,9/)), maux, 5, 6, ynew)
         end subroutine Verner5_6
 
         subroutine Fehlberg7_8 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1037,7 +1066,7 @@ module integrators
                          & 0., 41/840., 41/840.  & !y
                & /)
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
         end subroutine Fehlberg7_8
 
         subroutine Dormand_Prince7_8 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1110,10 +1139,12 @@ module integrators
                & /)
 
 
-            call solve_emmbed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
+            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
         end subroutine Dormand_Prince7_8
 
-        recursive subroutine rec_rk_adap (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+        ! RK Adap
+
+        recursive subroutine rk_adap_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             integer, intent(in)                      :: p
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
@@ -1140,17 +1171,17 @@ module integrators
                     dt_adap = dt_min
                     call integ (t, y, dt_adap, dydt, ynew)
                 else
-                    call rec_rk_adap (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+                    call rk_adap_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
                 end if
             end if
-        end subroutine rec_rk_adap
+        end subroutine rk_adap_caller
 
         !---------------------------------------------------------------------------------------------
         ! WRAPPERS:
         !---------------------------------------------------------------------------------------------
 
         !---------------------------------
-        !   Call an integrator
+        !   Call an RK (not embedded nor implicit) integrator
         !---------------------------------
 
         subroutine integ_caller (t, y, dt, dydt, integ, ynew)
@@ -1161,8 +1192,40 @@ module integrators
             procedure(integ_tem)                     :: integ
             real*8, dimension(size (y)), intent(out) :: ynew
 
-            call integ(t, y, dt, dydt, ynew)
+            call integ (t, y, dt, dydt, ynew)
         end subroutine integ_caller
+
+        !---------------------------------
+        !   Call an implicit integrator
+        !---------------------------------
+        
+        subroutine implicit_caller (t, y, dt, dydt, integ, max_iter, e_tol, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, dt, e_tol
+            integer, intent(in)                      :: max_iter
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            procedure(implicit_tem)                  :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
+
+            call integ (t, y, dt, dydt, max_iter, e_tol, ynew)
+        end subroutine implicit_caller
+
+        !---------------------------------
+        !   Call an embedded integrator
+        !---------------------------------
+        
+        subroutine embedded_caller (t, y, dt_adap, dydt, integ, e_tol, beta, dt_min, dt_used, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, e_tol, beta, dt_min
+            real*8, intent(inout)                    :: dt_adap, dt_used
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            procedure(embedded_tem)                  :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
+
+            call integ (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
+        end subroutine embedded_caller
 
         !---------------------------------
         !   From =>(f (t, y__), ...)
@@ -1214,14 +1277,38 @@ module integrators
                 end function Faux
         end subroutine integ_wrapper
 
-        ! Same as before, but for emmbedded_tem_wrapper integrator
-        subroutine emmbedded_tem_wrapper (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, integ, ynew)
+        ! Same as before, but for implicit_tem_wrapper integrator
+        subroutine implicit_tem_wrapper (t, y, dt, dydt, integ, max_iter, e_tol, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, dt, e_tol
+            integer, intent(in)                      :: max_iter
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            procedure(implicit_tem)                  :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
+
+            call integ (t, y, dt, Faux, max_iter, e_tol, ynew)
+
+            contains
+            
+                function Faux (t, y) result (der)
+                    implicit none
+                    real*8, intent(in)               :: t
+                    real*8, dimension(:), intent(in) :: y
+                    real*8, dimension(size (y))      :: der
+
+                    der = dydt_wrapper (t, y, dydt)
+                end function Faux
+        end subroutine implicit_tem_wrapper
+
+        ! Same as before, but for embedded_tem_wrapper integrator
+        subroutine embedded_tem_wrapper (t, y, dt_adap, dydt, integ, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
             real*8, intent(inout)                    :: dt_adap, dt_used
             real*8, dimension(:), intent(in)         :: y
             type(dydt_i), dimension(size (y))        :: dydt
-            procedure(emmbedded_tem)                 :: integ
+            procedure(embedded_tem)                 :: integ
             real*8, dimension(size (y)), intent(out) :: ynew
 
             call integ (t, y, dt_adap, Faux, e_tol, beta, dt_min, dt_used, ynew)
@@ -1236,11 +1323,10 @@ module integrators
 
                     der = dydt_wrapper (t, y, dydt)
                 end function Faux
+        end subroutine embedded_tem_wrapper
 
-        end subroutine emmbedded_tem_wrapper
-
-        ! Same as before, but for rec_rk_adap integrator
-        subroutine rec_rk_adap_wrapper (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+        ! Same as before, but for rk_adap integrator
+        subroutine rk_adap_wrapper (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             integer, intent(in)                      :: p
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
@@ -1250,7 +1336,7 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, intent(inout)                    :: dt_adap, dt_used
             
-            call rec_rk_adap (t, y, dt_adap, Faux, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+            call rk_adap_caller (t, y, dt_adap, Faux, integ, p, e_tol, beta, dt_min, dt_used, ynew)
 
             contains
             
@@ -1262,7 +1348,6 @@ module integrators
 
                     der = dydt_wrapper (t, y, dydt)
                 end function Faux
-
-        end subroutine rec_rk_adap_wrapper
+        end subroutine rk_adap_wrapper
 
 end module integrators

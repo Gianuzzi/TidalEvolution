@@ -41,7 +41,7 @@ Q(3)   = 1.e5            ! [?]
 ! Run conditions
 t0       = 0. * YR2DAY      ! [days]
 dt       = 0.0001 * YR2DAY  ! [days] ![First & min]
-tf       = 5.7e9 * YR2DAY   ! [days]
+tf       = 5.e9 * YR2DAY    ! [days]
 n_points = 5000             ! Approx N_output
 
 ! Integration conditions
@@ -60,7 +60,7 @@ call set_initial_params ((/a1, a2/), Q, alp, r, m, C, mu, mp, n, k2dt, TSk)
 n_iter = int ((tf - t0) / dt, kind=8)
 Logt   = exp (log (tf - t0) / (n_points - 1))
 t_add  = Logt
-print *, "Approximate Iterations:", n_iter
+print *, "Max Iterations:", n_iter
 !------------------------------------------------------
 
 !------------------------ FILE ------------------------
@@ -84,14 +84,14 @@ if (file_exists) then
 end if
 
 open (20, file=trim (filename)//".params", status='replace')
-write (20, '(17(A,1X))') "m0", "r0", "al0", "Q0", &
+write (20, '(27(A,1X))') "m0", "r0", "al0", "Q0", &
                        & "m1", "r1", "al1", "Q1", &
                        & "m2", "r2", "al2", "Q2", &
                        & "s0", "o0", &
                        & "a1", "e1", "s1", "o1", "vp1", &
                        & "a2", "e2", "s2", "o2", "vp2", &
                        & "t0", "dt", "tf"
-write (20,'(17(E16.9,1X))') m(1), r(1), alp(1), Q(1), &
+write (20,'(27(E16.9,1X))') m(1), r(1), alp(1), Q(1), &
                           & m(2), r(2), alp(2), Q(2), &
                           & m(3), r(3), alp(3), Q(3), &
                           & s0, o0, &
@@ -102,7 +102,6 @@ close (20)
 !------------------------------------------------------
 
 !------------------------ START -----------------------
-
 ! Time
 call cpu_time (start_time)
 
@@ -143,14 +142,16 @@ do while (t < tf)
         write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
         ! write (*, "(A8, 12(E14.4, 1X))") "Valores:", y
         write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
-        dt = t_out - t  ! -------------  Mainly for BS ---------------- !
+        if (dt_adap .ne. dt) then
+            dt = t_out - t
+        end if
     end if
     
-    !!! Execute an integration method (uncomment one of theese)
-    ! call integ_caller (t, y, dt, dydtidall, rungek4, ynew)
-    ! call rec_rk_adap (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-    ! call Verner5_6 (t, y, dt_adap, dydtidall, e_tol, beta, dt_min, dt, ynew)
-    call bs (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
+    !!! Execute an integration method (uncomment/edit one of theese)
+    ! call integ_caller (t, y, dt, dydtidall, rungek6, ynew)
+    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, ynew)
+    ! call rk_adap_caller (t, y, dt_adap, dydtidall, rungek6, 6, e_tol, beta, dt_min, dt, ynew)
+    call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
     ynew(2)  = max (min_val, mod (ynew(2), TWOPI))

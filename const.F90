@@ -12,5 +12,6 @@ module const
     real*8, parameter  :: RJ2UA   = 4.77895e-4       ! [AU]
     real*8, parameter  :: RT2UA   = 4.26352e-5       ! [AU]
     real*8, parameter  :: YR2DAY  = 365.2563         ! [day]
+    real*8, parameter  :: C_SPEED = 173.144632674    ! [AU daỵ⁻¹]
 
 end module const

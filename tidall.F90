@@ -276,7 +276,7 @@ module tidall
         end subroutine dydtidal
         
         ! dydtidal0 (y0__, y1__) = ynew__
-        subroutine dydtgrav (planet1, planet2, y1, y2, y12g, y21g)
+        subroutine dydtgrav (y1, planet1, y2, planet2, y12g, y21g)
             implicit none
             real*8, dimension(yi_s), intent(in)  :: y1, y2
             integer, intent(in)                  :: planet1, planet2
@@ -298,18 +298,38 @@ module tidall
             extra1 = m(i2) / n_f (a1, mu(i1))
             extra2 = m(i1) * alpha**2 / n_f (a2, mu(i2))
             
-            y12g(1) = 0.
-            y12g(2) = - factor * (0.75 * H1 - 0.9375 * alpha * H2) * extra1
-            y12g(3) = 0.
-            y12g(4) = 0.
-            y12g(5) = factor * (0.75 * K1 - 0.9375 * alpha * K2) * extra1
-
-            y21g(1) = 0.
-            y21g(2) = - factor * (0.75 * H2 - 0.9375 * alpha * H1) * extra2
-            y21g(3) = 0.
-            y21g(4) = 0.
-            y21g(5) = factor * (0.75 * K2 - 0.9375 * alpha * K1) * extra2
+            y12g = 0.
+            y21g = 0.
+            
+            y12g(2) = - factor * (0.75 * H1 - 0.9375 * alpha * H2) * extra1 ! d(K1) / dt
+            y12g(5) = factor * (0.75 * K1 - 0.9375 * alpha * K2) * extra1   ! d(H1) / dt
+            
+            y21g(2) = - factor * (0.75 * H2 - 0.9375 * alpha * H1) * extra2 ! d(K2) / dt
+            y21g(5) = factor * (0.75 * K2 - 0.9375 * alpha * K1) * extra2   ! d(H2) / dt
         end subroutine dydtgrav
+
+        subroutine dydtrela (yi, planet, yir)
+            implicit none
+            real*8, dimension(yi_s), intent(in)  :: yi
+            integer, intent(in)                  :: planet
+            real*8                               :: a, K, s, o, H
+            real*8                               :: e, vp
+            real*8                               :: dvpdt
+            real*8, dimension(yi_s), intent(out) :: yir ! d y1 / dt
+            integer                              :: i
+            
+            i = planet + 1
+
+            call get_from_yi (yi, a, K, s, o, H)
+            call get_evp (K, H, e, vp)
+
+            dvpdt = 3. * mu(i) * n_f (a, mu(i)) / (a * C_SPEED**2)
+
+            yir = 0.         
+
+            yir(2) = - e * sin (vp) * dvpdt  ! d(K) / dt = - e * sin(vp) * d(vp) / dt 
+            yir(5) = e * cos (vp) * dvpdt    ! d(H) / dt = e * cos(vp) * d(vp) / dt 
+        end subroutine dydtrela
 
         function dydtidall (t, y) result (ynew)
             implicit none
@@ -319,22 +339,27 @@ module tidall
             real*8, dimension(y0_s)          :: y0
             real*8, dimension(yi_s)          :: y1, y2
             real*8, dimension(y0_s)          :: y01t, y02t
-            real*8, dimension(yi_s)          :: y10t, y20t, y12g, y21g
+            real*8, dimension(yi_s)          :: y10t, y20t, y12g, y21g, y1r, y2r
+
+            call get_from_big_y (y, y0, y1, y2)
 
             ynew = 0.
             y10t = 0.
             y20t = 0.
             y12g = 0.
             y21g = 0.
+            y1r  = 0.
+            y2r  = 0.
 
-            call get_from_big_y (y, y0, y1, y2)
             call dydtidal (y0, y1, 1, y01t, y10t)
             call dydtidal (y0, y2, 2, y02t, y20t)
-            call dydtgrav (1, 2, y1, y2, y12g, y21g)
+            call dydtgrav (y1, 1, y2, 2, y12g, y21g)
+            call dydtrela (y1, 1, y1r)
+            call dydtrela (y2, 2, y2r)
 
-            ynew(: y0_s)                 = y01t + y02t ! d(y0)/dt
-            ynew(y0_s + 1 : y0_s + yi_s) = y10t + y12g ! d(y1)/dt
-            ynew(y0_s + yi_s + 1 :)      = y20t + y21g ! d(y2)/dt
+            ynew(: y0_s)                 = y01t + y02t       ! d(y0)/dt
+            ynew(y0_s + 1 : y0_s + yi_s) = y10t + y12g + y1r ! d(y1)/dt
+            ynew(y0_s + yi_s + 1 :)      = y20t + y21g + y2r ! d(y2)/dt
         end function dydtidall
         
 end module tidall

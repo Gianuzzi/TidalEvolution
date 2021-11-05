@@ -15,9 +15,9 @@ module bstoer
 
     contains
 
-        subroutine bs (t, y, dt_adap, dydt, e_tol, dt_min, dt_used, ynew)
+        subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dummy, dt_min, dt_used, ynew)
             implicit none
-            real*8, intent(in)                       :: t, e_tol, dt_min
+            real*8, intent(in)                       :: t, e_tol, dt_min, dummy
             real*8, intent(inout)                    :: dt_adap, dt_used
             real*8, dimension(:), intent(in)         :: y
             procedure(dydt_tem)                      :: dydt
@@ -37,131 +37,131 @@ module bstoer
                 call bstep (ynew, dydt, sizey, time, dt_adap, e_tol, dt_done, dt_next)
                 dt_adap = dt_next
             end do
-        end subroutine bs
+        end subroutine Bulirsch_Stoer
 
         subroutine bstep (y, dydt, sizey, x, htry, eps, hdid, hnext)
-        implicit none        
-        procedure(dydt_tem)   :: dydt
-        integer, intent(in)   :: sizey
-        real*8, intent(in)    :: htry, eps
-        real*8, intent(inout) :: x, hdid, hnext
-        real*8, dimension(sizey), intent(inout) :: y
-        real*8, dimension(sizey)                :: yerr, ysav, yseq, der
-        real*8, dimension(sizey * 2 - 1)        :: xpz
-        real*8, dimension(sizey, sizey * 2 - 1) :: qcolpz
-        integer, parameter :: kmaxx = 8
-        real*8, parameter  :: safe1 = .25, safe2 = .7
-        real*8, parameter  :: redmax = 1.e-5, redmin = .7
-        real*8, parameter  :: tini = 1.e-30, scalmx = .1
-        real*8, dimension(kmaxx)                 :: err
-        real*8, dimension(kmaxx + 1), save       :: arr
-        real*8, dimension(kmaxx, kmaxx), save    :: alf
-        integer, parameter, dimension(kmaxx + 1) :: nseq = (/2, 4, 6, 8, 10, 12, 14, 16, 18/)
-        logical       :: reduct
-        logical, save :: first = .true.
-        integer, save :: kmax, kopt
-        real*8, save  :: xnew, epsold = -1.
-        real*8        :: wrkmin, fact, work, scala, eps1, xest, errmax, red, h
-        integer       :: k, iq, i ,km, kk
+            implicit none        
+            procedure(dydt_tem)   :: dydt
+            integer, intent(in)   :: sizey
+            real*8, intent(in)    :: htry, eps
+            real*8, intent(inout) :: x, hdid, hnext
+            real*8, dimension(sizey), intent(inout) :: y
+            real*8, dimension(sizey)                :: yerr, ysav, yseq, der
+            real*8, dimension(sizey * 2 - 1)        :: xpz
+            real*8, dimension(sizey, sizey * 2 - 1) :: qcolpz
+            integer, parameter :: kmaxx = 8
+            real*8, parameter  :: safe1 = .25, safe2 = .7
+            real*8, parameter  :: redmax = 1.e-5, redmin = .7
+            real*8, parameter  :: tini = 1.e-30, scalmx = .1
+            real*8, dimension(kmaxx)                 :: err
+            real*8, dimension(kmaxx + 1), save       :: arr
+            real*8, dimension(kmaxx, kmaxx), save    :: alf
+            integer, parameter, dimension(kmaxx + 1) :: nseq = (/2, 4, 6, 8, 10, 12, 14, 16, 18/)
+            logical       :: reduct
+            logical, save :: first = .true.
+            integer, save :: kmax, kopt
+            real*8, save  :: xnew, epsold = -1.
+            real*8        :: wrkmin, fact, work, scala, eps1, xest, errmax, red, h
+            integer       :: k, iq, i ,km, kk
 
-        der = dydt (x, y)
+            der = dydt (x, y)
 
-        if (eps .ne. epsold) then
-            hnext = -1.0e29
-            xnew  = -1.0e29
-            eps1  = safe1 * eps
-            arr(1) = nseq(1) + 1
-            do k = 1, kmaxx
-                arr(k + 1) = arr(k) + nseq(k + 1)
-            end do
-            do iq = 2, kmaxx
-                do k = 1, iq - 1
-                    alf(k, iq) = eps1**((arr(k + 1) - arr(iq + 1)) / ((arr(iq + 1) - arr(1) + 1.) * (2. * k + 1)))
+            if (eps .ne. epsold) then
+                hnext = -1.0e29
+                xnew  = -1.0e29
+                eps1  = safe1 * eps
+                arr(1) = nseq(1) + 1
+                do k = 1, kmaxx
+                    arr(k + 1) = arr(k) + nseq(k + 1)
                 end do
-            end do
-            epsold = eps
-            do kopt = 2, kmaxx - 1
-                if (arr(kopt + 1) .gt. arr(kopt) * alf(kopt - 1, kopt)) then
-                    goto 1
-                end if
-            end do
-            1 kmax = kopt
-        end if
-        h = htry
-        do i = 1, sizey
-            ysav(i) = y(i)
-        end do
-        if (h .ne. hnext .or. x .ne. xnew) then
-            first = .true.
-            kopt = kmax
-        end if
-        reduct = .false.
-        2 do k = 1, kmax
-            xnew = x + h
-            if (xnew .eq. x) then
-                return
-            end if
-            call mmid (ysav, dydt, der, sizey, x, h, nseq(k), yseq)
-            xest = (h / nseq(k))**2
-            call pzextr (k, xest, yseq, y, yerr, sizey, qcolpz, xpz)
-            if (k .ne. 1) then
-                errmax = tini
-                do i = 1, sizey
-                    errmax = max (errmax, abs (yerr(i)))
+                do iq = 2, kmaxx
+                    do k = 1, iq - 1
+                        alf(k, iq) = eps1**((arr(k + 1) - arr(iq + 1)) / ((arr(iq + 1) - arr(1) + 1.) * (2. * k + 1)))
+                    end do
                 end do
-                errmax = errmax / eps
-                km = k - 1
-                err(km) = (errmax / safe1)**(1. / (2. * km + 1))
+                epsold = eps
+                do kopt = 2, kmaxx - 1
+                    if (arr(kopt + 1) .gt. arr(kopt) * alf(kopt - 1, kopt)) then
+                        goto 1
+                    end if
+                end do
+                1 kmax = kopt
             end if
-            if (k .ne. 1 .and. (k .ge. kopt - 1 .or. first)) then
-                if (errmax .lt. 1.) then
-                    goto 4
+            h = htry
+            do i = 1, sizey
+                ysav(i) = y(i)
+            end do
+            if (h .ne. hnext .or. x .ne. xnew) then
+                first = .true.
+                kopt = kmax
+            end if
+            reduct = .false.
+            2 do k = 1, kmax
+                xnew = x + h
+                if (xnew .eq. x) then
+                    return
                 end if
-                if (k .eq. kmax .or. k .eq. kopt + 1) then
-                    red = safe2 / err(km)
-                    goto 3
-                else if (k .eq. kopt) then
-                    if (alf(kopt - 1, kopt) .lt. err(km)) then
-                        red = 1. / err(km)
+                call mmid (ysav, dydt, der, sizey, x, h, nseq(k), yseq)
+                xest = (h / nseq(k))**2
+                call pzextr (k, xest, yseq, y, yerr, sizey, qcolpz, xpz)
+                if (k .ne. 1) then
+                    errmax = tini
+                    do i = 1, sizey
+                        errmax = max (errmax, abs (yerr(i)))
+                    end do
+                    errmax = errmax / eps
+                    km = k - 1
+                    err(km) = (errmax / safe1)**(1. / (2. * km + 1))
+                end if
+                if (k .ne. 1 .and. (k .ge. kopt - 1 .or. first)) then
+                    if (errmax .lt. 1.) then
+                        goto 4
+                    end if
+                    if (k .eq. kmax .or. k .eq. kopt + 1) then
+                        red = safe2 / err(km)
+                        goto 3
+                    else if (k .eq. kopt) then
+                        if (alf(kopt - 1, kopt) .lt. err(km)) then
+                            red = 1. / err(km)
+                            goto 3
+                        end if
+                    else if (kopt .eq. kmax) then
+                        if (alf(km, kmax - 1) .lt. err(km)) then
+                            red = alf(km, kmax - 1) * safe2 / err(km)
+                            goto 3
+                        end if
+                    else if (alf(km, kopt) .lt. err(km)) then
+                        red = alf(km, kopt - 1) / err(km)
                         goto 3
                     end if
-                else if (kopt .eq. kmax) then
-                    if (alf(km, kmax - 1) .lt. err(km)) then
-                        red = alf(km, kmax - 1) * safe2 / err(km)
-                        goto 3
-                    end if
-                else if (alf(km, kopt) .lt. err(km)) then
-                    red = alf(km, kopt - 1) / err(km)
-                    goto 3
+                end if
+            end do
+            3 red = min (red, redmin)
+            red = max (red, redmax)
+            h = h * red
+            reduct = .true.
+            goto 2
+            4 x = xnew
+            hdid = h
+            first = .false.
+            wrkmin = 1.e35
+            do kk = 1, km
+                fact = max (err(kk), scalmx)
+                work = fact * arr(kk + 1)
+                if (work .lt. wrkmin) then
+                    scala = fact
+                    wrkmin = work
+                    kopt = kk + 1
+                end if
+            end do
+            hnext = h / scala
+            if (kopt .ge. k .and. kopt .ne. kmax .and. .not. reduct) then
+                fact = max (scala / alf(kopt - 1, kopt), scalmx)
+                if (arr(kopt + 1) * fact .le. wrkmin) then
+                    hnext = h / fact
+                    kopt = kopt + 1
                 end if
             end if
-        end do
-        3 red = min (red, redmin)
-        red = max (red, redmax)
-        h = h * red
-        reduct = .true.
-        goto 2
-        4 x = xnew
-        hdid = h
-        first = .false.
-        wrkmin = 1.e35
-        do kk = 1, km
-            fact = max (err(kk), scalmx)
-            work = fact * arr(kk + 1)
-            if (work .lt. wrkmin) then
-                scala = fact
-                wrkmin = work
-                kopt = kk + 1
-            end if
-        end do
-        hnext = h / scala
-        if (kopt .ge. k .and. kopt .ne. kmax .and. .not. reduct) then
-            fact = max (scala / alf(kopt - 1, kopt), scalmx)
-            if (arr(kopt + 1) * fact .le. wrkmin) then
-                hnext = h / fact
-                kopt = kopt + 1
-            end if
-        end if
         end subroutine bstep
 
         subroutine mmid (y, dydt, dydx, sizey, xs, htot, nstep, yout)
