@@ -1,0 +1,26 @@
+# This file is generated automatically. DO NOT EDIT!
+
+tidal :  \
+	bstoer.o \
+	const.o \
+	integrators.o \
+	main.o \
+	run.o \
+	tidall.o
+
+bstoer.o : 
+
+const.o : 
+
+integrators.o : 
+
+main.o :  \
+	bstoer.o \
+	integrators.o \
+	run.o \
+	tidall.o
+
+run.o : 
+
+tidall.o :  \
+	const.o
