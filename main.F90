@@ -153,9 +153,9 @@ do while (t < tf)
     end if
     
     !!! Execute an integration method (uncomment/edit one of theese)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, ynew)
     ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, ynew)
-    ! call rk_adap_caller (t, y, dt_adap, dydtidall, rungek6, 6, e_tol, beta, dt_min, dt, ynew)
+    ! call integ_caller (t, y, dt, dydtidall, rungek6, ynew)
+    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek6, 6, e_tol, beta, dt_min, dt, ynew)
     call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles

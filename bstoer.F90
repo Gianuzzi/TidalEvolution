@@ -15,6 +15,8 @@ module bstoer
 
     contains
 
+        !! Bulirsch Stoer main integrator
+
         subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dummy, dt_min, dt_used, ynew)
             implicit none
             real*8, intent(in)                       :: t, e_tol, dt_min, dummy
@@ -38,6 +40,10 @@ module bstoer
                 dt_adap = dt_next
             end do
         end subroutine Bulirsch_Stoer
+
+        !!
+
+        !! Auxiliar subroutines
 
         subroutine bstep (y, dydt, sizey, x, htry, eps, hdid, hnext)
             implicit none        
@@ -238,5 +244,7 @@ module bstoer
                 end do
             end if
         end subroutine pzextr
+
+        !!
 
 end module bstoer

@@ -494,9 +494,10 @@ module integrators
         ! ND -> ND
         !---------------------------------------------------------------------------------------------
 
-        ! IMPLICIT
+        !------------------------------------------ SOLVERS ------------------------------------------
 
-        !! Solver
+        !! Implicit Methods Solver
+
         subroutine solve_implicit (t, y, dt, dydt, max_iter, e_tol, y1)
             implicit none
             integer*4, intent(in)                    :: max_iter
@@ -516,6 +517,101 @@ module integrators
                 end if
             end do
         end subroutine solve_implicit
+
+        !!
+
+        !! Runge Kutta Methods Solver
+
+        subroutine get_rks (t, y, dt, dydt, m, rk)
+            implicit none
+            real*8, intent(in)                                         :: t, dt
+            real*8, dimension(:), intent(in)                           :: y
+            real*8, dimension(:,:), intent(in)                         :: m
+            real*8, dimension((size (m,1) - 1), size (y)), intent(out) :: rk ! In columns
+            real*8, dimension(size (y))                                :: rkaux
+            procedure(dydt_tem)                                        :: dydt
+            integer*4                                                  :: i, j
+            
+            do i = 1, size (m, 1) - 1 ! Rows
+                rkaux = 0.
+                do j = 1, i ! Cols (<i bc its inf triang)    
+                    rkaux = rkaux + m(1+j,i) * rk(j,:)                    
+                end do
+                rk(i, :) = dydt (t + m(1,i) * dt, y + dt * rkaux)
+            end do
+        end subroutine get_rks
+        
+        subroutine solve_rk (t, y, dt, dydt, m, ynew)
+            implicit none
+            real*8, intent(in)                            :: t, dt
+            real*8, dimension(:), intent(in)              :: y
+            real*8, dimension(:,:), intent(in)            :: m
+            real*8, dimension((size (m,1) - 1), size (y)) :: rk
+            procedure(dydt_tem)                           :: dydt
+            real*8, dimension(size (y)), intent(out)      :: ynew
+            integer*4                                     :: i 
+            
+            call get_rks (t, y, dt, dydt, m, rk)
+            
+            do i = 1, size (y)
+                ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
+            end do
+        end subroutine solve_rk
+
+        !!
+
+        !! Embedded Methods Solver
+
+        recursive subroutine solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
+            implicit none
+            real*8, intent(in)                            :: t, e_tol, beta, dt_min
+            real*8, intent(inout)                         :: dt_adap, dt_used
+            real*8, dimension(:), intent(in)              :: y
+            real*8, dimension(:,:), intent(in)            :: m
+            integer*4, intent(in)                         :: osol, oerr
+            integer*4                                     :: i, s, iter = 1
+            real*8, dimension(size (m,1) - 1), intent(in) :: maux
+            real*8, dimension(size (y))                   :: yaux
+            real*8, dimension(size (m,1) - 1, size (y))   :: rk
+            procedure(dydt_tem)                           :: dydt
+            real*8, dimension(size (y)), intent(out)      :: ynew            
+            real*8                                        :: e_calc, ratio
+
+            
+            dt_adap = max (dt_adap, dt_min)
+            s       = size (m, 1)
+
+            call get_rks (t, y, dt_adap, dydt, m, rk)
+            do i = 1, size (y)
+                yaux(i) = y(i) + dt_adap * dot_product (   maux, rk(:,i))
+                ynew(i) = y(i) + dt_adap * dot_product (m(2:,s), rk(:,i))
+            end do
+
+            e_calc = norm2 (ynew - yaux)
+            ratio = e_tol / e_calc
+            if ((ratio > 1.) .or. (iter .eq. MAX_ITER)) then
+                dt_used = dt_adap
+                dt_adap = dt_adap * min (beta * ratio**(1. / osol), MAX_DT_FAC)
+                iter = 1
+            else
+                dt_adap = dt_adap * min (beta * ratio**(1. / oerr), MAX_DT_FAC)
+                if ((isnan (dt_adap)) .or. (dt_adap < dt_min)) then
+                    dt_adap = dt_min
+                    dt_used = dt_min
+                    call solve_rk (t, y, dt_adap, dydt, m, ynew)
+                    iter = 1
+                else
+                    call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
+                    iter = iter + 1
+                end if 
+            end if
+        end subroutine solve_embed
+
+        !!
+
+        !---------------------------------------- INTEGRATORS ----------------------------------------
+
+        !! Implicit Methods
 
         subroutine euler_backward (t, y, dt, dydt, max_iter, e_tol, ynew)
             implicit none
@@ -545,45 +641,9 @@ module integrators
             ynew = y + 0.5 * (dydt (t + dt, y1) + dydt (t, y)) * dt
         end subroutine euler_centred
 
-        ! RKs
+        !!
 
-        !! Solver
-        subroutine get_rks (t, y, dt, dydt, m, rk)
-            implicit none
-            real*8, intent(in)                                         :: t, dt
-            real*8, dimension(:), intent(in)                           :: y
-            real*8, dimension(:,:), intent(in)                         :: m
-            real*8, dimension((size (m,1) - 1), size (y)), intent(out) :: rk ! In columns
-            real*8, dimension(size (y))                                :: rkaux
-            procedure(dydt_tem)                                        :: dydt
-            integer*4                                                  :: i, j
-            
-            do i = 1, size (m, 1) - 1 ! Rows
-                rkaux = 0.
-                do j = 1, i ! Cols (<i bc its inf triang)    
-                    rkaux = rkaux + m(1+j,i) * rk(j,:)                    
-                end do
-                rk(i, :) = dydt (t + m(1,i) * dt, y + dt * rkaux)
-            end do
-        end subroutine get_rks
-
-        !! Solver
-        subroutine solve_rk (t, y, dt, dydt, m, ynew)
-            implicit none
-            real*8, intent(in)                            :: t, dt
-            real*8, dimension(:), intent(in)              :: y
-            real*8, dimension(:,:), intent(in)            :: m
-            real*8, dimension((size (m,1) - 1), size (y)) :: rk
-            procedure(dydt_tem)                           :: dydt
-            real*8, dimension(size (y)), intent(out)      :: ynew
-            integer*4                                     :: i 
-            
-            call get_rks (t, y, dt, dydt, m, rk)
-            
-            do i = 1, size (y)
-                ynew(i) = y(i) + dt * dot_product ((/m(2:, size (m, 1))/), rk(:,i))
-            end do
-        end subroutine solve_rk        
+        !! Runge Kutta Methods
 
         subroutine euler_forward (t, y, dt, dydt, ynew)
             implicit none
@@ -802,53 +862,9 @@ module integrators
             call solve_rk (t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
         end subroutine rungek6
 
-        ! EMBEDDED
+        !!
 
-        !! Solver
-        recursive subroutine solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
-            implicit none
-            real*8, intent(in)                            :: t, e_tol, beta, dt_min
-            real*8, intent(inout)                         :: dt_adap, dt_used
-            real*8, dimension(:), intent(in)              :: y
-            real*8, dimension(:,:), intent(in)            :: m
-            integer*4, intent(in)                         :: osol, oerr
-            integer*4                                     :: i, s, iter = 1
-            real*8, dimension(size (m,1) - 1), intent(in) :: maux
-            real*8, dimension(size (y))                   :: yaux
-            real*8, dimension(size (m,1) - 1, size (y))   :: rk
-            procedure(dydt_tem)                           :: dydt
-            real*8, dimension(size (y)), intent(out)      :: ynew            
-            real*8                                        :: e_calc, ratio
-
-            
-            dt_adap = max (dt_adap, dt_min)
-            s       = size (m, 1)
-
-            call get_rks (t, y, dt_adap, dydt, m, rk)
-            do i = 1, size (y)
-                yaux(i) = y(i) + dt_adap * dot_product (   maux, rk(:,i))
-                ynew(i) = y(i) + dt_adap * dot_product (m(2:,s), rk(:,i))
-            end do
-
-            e_calc = norm2 (ynew - yaux)
-            ratio = e_tol / e_calc
-            if ((ratio > 1.) .or. (iter .eq. MAX_ITER)) then
-                dt_used = dt_adap
-                dt_adap = dt_adap * min (beta * ratio**(1. / osol), MAX_DT_FAC)
-                iter = 1
-            else
-                dt_adap = dt_adap * min (beta * ratio**(1. / oerr), MAX_DT_FAC)
-                if ((isnan (dt_adap)) .or. (dt_adap < dt_min)) then
-                    dt_adap = dt_min
-                    dt_used = dt_min
-                    call solve_rk (t, y, dt_adap, dydt, m, ynew)
-                    iter = 1
-                else
-                    call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
-                    iter = iter + 1
-                end if 
-            end if
-        end subroutine solve_embed
+        !! Embedded
 
         subroutine Heun_Euler2_1 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
@@ -1146,9 +1162,11 @@ module integrators
             call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 8, 7, ynew)
         end subroutine Dormand_Prince8_7
 
-        ! RK Adap
+        !!
 
-        recursive subroutine rk_adap_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+        !! Runge Kutta Half_Step
+
+        recursive subroutine rk_half_step_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             integer*4, intent(in)                    :: p
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
@@ -1182,11 +1200,13 @@ module integrators
                     call integ (t, y, dt_adap, dydt, ynew)
                     iter = 1
                 else
-                    call rk_adap_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+                    call rk_half_step_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
                     iter = iter + 1
                 end if
             end if
-        end subroutine rk_adap_caller
+        end subroutine rk_half_step_caller
+
+        !!
 
         !---------------------------------------------------------------------------------------------
         ! WRAPPERS:
@@ -1348,7 +1368,7 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, intent(inout)                    :: dt_adap, dt_used
             
-            call rk_adap_caller (t, y, dt_adap, Faux, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+            call rk_half_step_caller (t, y, dt_adap, Faux, integ, p, e_tol, beta, dt_min, dt_used, ynew)
 
             contains
             
