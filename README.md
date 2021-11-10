@@ -48,7 +48,7 @@ call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_
 
 - *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```rungek6``` -> O(6)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L1167#L1209)). En este caso el error calculado será ϵ<sub>calc</sub> (≡ |<b>y</b><sub>real</sub> - <b>y</b><sub>pred</sub>|)/(2<sup>ord</sup> - 1).
 
-- *embedded_caller* (**recomendado**): Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores _NDimensionales_ embebidos (ver [integrators.F90](./integrators.F90#L867#L1165)), incluyendo al integrador *Bulirsch_Stoer* (**recomendado** si se introduce un ϵ<sub>tol</sub> < 10<sup>-8</sup>, ver [bstoer.F90](./bstoer.F90#L18#44)).
+- *embedded_caller* (**recomendado**): Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores _NDimensionales_ embebidos (ver [integrators.F90](./integrators.F90#L867#L1165)), incluyendo al integrador *Bulirsch_Stoer* (**recomendado** si se introduce un ϵ<sub>tol</sub> < 10<sup>-8</sup>, ver [bstoer.F90](./bstoer.F90#L18#L44)).
 
 
 #### **Fuerzas involucradas**
