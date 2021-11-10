@@ -3,8 +3,8 @@ module tidall
     use const
 
     implicit none
-    integer, parameter :: N_bodies = 3, y0_s = 2, yi_s = 5
-    integer, parameter :: y_s = y0_s + yi_s * (N_bodies - 1)
+    integer*4, parameter :: N_bodies = 3, y0_s = 2, yi_s = 5
+    integer*4, parameter :: y_s = y0_s + yi_s * (N_bodies - 1)
 
     real*8, dimension(N_bodies) :: m            ! Masses (constants)
     real*8, dimension(N_bodies) :: r, alp, C    ! Bodies constant parameters
@@ -67,7 +67,7 @@ module tidall
             real*8, dimension(N_bodies), intent(in)            :: m, Q, alpha, radius
             real*8, dimension(N_bodies), intent(out)           :: mu, mp, n, C, k2dt
             real*8, dimension(N_bodies, N_bodies), intent(out) :: K
-            integer                                            :: i, j
+            integer*4                                          :: i, j
             
             K = 0.
             do i = N_bodies, 1, -1 !Backwards, for n(1) setting
@@ -231,7 +231,7 @@ module tidall
             implicit none
             real*8, dimension(y0_s), intent(in)  :: y0
             real*8, dimension(yi_s), intent(in)  :: y1
-            integer, intent(in)                  :: planet
+            integer*4, intent(in)                :: planet
             real*8                               :: s0, o0
             real*8                               :: a1, K1, s1, o1, H1
             real*8                               :: e1, vp1
@@ -240,7 +240,7 @@ module tidall
             real*8                               :: n1, de1dt
             real*8, dimension(y0_s), intent(out) :: y01t ! d y0 / dt
             real*8, dimension(yi_s), intent(out) :: y10t ! d y1 / dt
-            integer                              :: i
+            integer*4                            :: i
             
             i = planet + 1
 
@@ -279,12 +279,12 @@ module tidall
         subroutine dydtgrav (y1, planet1, y2, planet2, y12g, y21g)
             implicit none
             real*8, dimension(yi_s), intent(in)  :: y1, y2
-            integer, intent(in)                  :: planet1, planet2
+            integer*4, intent(in)                :: planet1, planet2
             real*8                               :: a1, K1, s1, o1, H1
             real*8                               :: a2, K2, s2, o2, H2
             real*8                               :: extra1, extra2
-            real*8                               :: alpha, factor
-            integer                              :: i1, i2
+            real*8                               :: alpha, factor, fa_alpha
+            integer*4                            :: i1, i2
             real*8, dimension(yi_s), intent(out) :: y12g, y21g ! d y1 / dt ; d y2 / dt
             
             i1 = planet1 + 1
@@ -293,37 +293,39 @@ module tidall
             call get_from_yi (y1, a1, K1, s1, o1, H1)
             call get_from_yi (y2, a2, K2, s2, o2, H2)
             
-            alpha  = a1 / a2
-            factor = G / a2**3
-            extra1 = m(i2) / n_f (a1, mu(i1))
-            extra2 = m(i1) * alpha**2 / n_f (a2, mu(i2))
+            alpha    = a1 / a2
+            fa_alpha = 0.9375 * alpha
+            factor   = G / a2**3
+            extra1   = m(i2) / n_f (a1, mu(i1))
+            extra2   = m(i1) * alpha**2 / n_f (a2, mu(i2))
             
             y12g = 0.
             y21g = 0.
             
-            y12g(2) = - factor * (0.75 * H1 - 0.9375 * alpha * H2) * extra1 ! d(K1) / dt
-            y12g(5) = factor * (0.75 * K1 - 0.9375 * alpha * K2) * extra1   ! d(H1) / dt
+            y12g(2) = - factor * (0.75 * H1 - fa_alpha * H2) * extra1 ! d(K1) / dt
+            y12g(5) = factor * (0.75 * K1 - fa_alpha * K2) * extra1   ! d(H1) / dt
             
-            y21g(2) = - factor * (0.75 * H2 - 0.9375 * alpha * H1) * extra2 ! d(K2) / dt
-            y21g(5) = factor * (0.75 * K2 - 0.9375 * alpha * K1) * extra2   ! d(H2) / dt
+            y21g(2) = - factor * (0.75 * H2 - fa_alpha * H1) * extra2 ! d(K2) / dt
+            y21g(5) = factor * (0.75 * K2 - fa_alpha * K1) * extra2   ! d(H2) / dt
         end subroutine dydtgrav
 
         subroutine dydtrela (yi, planet, yir)
             implicit none
             real*8, dimension(yi_s), intent(in)  :: yi
-            integer, intent(in)                  :: planet
+            integer*4, intent(in)                :: planet
             real*8                               :: a, K, s, o, H
             real*8                               :: e, vp
             real*8                               :: dvpdt
             real*8, dimension(yi_s), intent(out) :: yir ! d y1 / dt
-            integer                              :: i
+            integer*4                            :: i
+            real*8, parameter                    :: factor = 3. / C_SPEED**2
             
             i = planet + 1
 
             call get_from_yi (yi, a, K, s, o, H)
             call get_evp (K, H, e, vp)
 
-            dvpdt = 3. * mu(i) * n_f (a, mu(i)) / (a * C_SPEED**2)
+            dvpdt =  factor * mu(i)**(1.5) / a**(2.5) ! 3 G m n / a
 
             yir = 0.         
 

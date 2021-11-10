@@ -23,7 +23,7 @@ module bstoer
             procedure(dydt_tem)                      :: dydt
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8                                   :: time, tf, dt_done, dt_next
-            integer, save                            :: sizey
+            integer*4, save                          :: sizey
             
             dt_used = max (dt_min, dt_used)
             ynew    = y
@@ -42,27 +42,27 @@ module bstoer
         subroutine bstep (y, dydt, sizey, x, htry, eps, hdid, hnext)
             implicit none        
             procedure(dydt_tem)   :: dydt
-            integer, intent(in)   :: sizey
+            integer*4, intent(in) :: sizey
             real*8, intent(in)    :: htry, eps
             real*8, intent(inout) :: x, hdid, hnext
             real*8, dimension(sizey), intent(inout) :: y
             real*8, dimension(sizey)                :: yerr, ysav, yseq, der
             real*8, dimension(sizey * 2 - 1)        :: xpz
             real*8, dimension(sizey, sizey * 2 - 1) :: qcolpz
-            integer, parameter :: kmaxx = 8
-            real*8, parameter  :: safe1 = .25, safe2 = .7
-            real*8, parameter  :: redmax = 1.e-5, redmin = .7
-            real*8, parameter  :: tini = 1.e-30, scalmx = .1
-            real*8, dimension(kmaxx)                 :: err
-            real*8, dimension(kmaxx + 1), save       :: arr
-            real*8, dimension(kmaxx, kmaxx), save    :: alf
-            integer, parameter, dimension(kmaxx + 1) :: nseq = (/2, 4, 6, 8, 10, 12, 14, 16, 18/)
-            logical       :: reduct
-            logical, save :: first = .true.
-            integer, save :: kmax, kopt
-            real*8, save  :: xnew, epsold = -1.
-            real*8        :: wrkmin, fact, work, scala, eps1, xest, errmax, red, h
-            integer       :: k, iq, i ,km, kk
+            integer*4, parameter :: kmaxx = 8
+            real*8, parameter    :: safe1 = .25, safe2 = .7
+            real*8, parameter    :: redmax = 1.e-5, redmin = .7
+            real*8, parameter    :: tini = 1.e-30, scalmx = .1
+            real*8, dimension(kmaxx)                   :: err
+            real*8, dimension(kmaxx + 1), save         :: arr
+            real*8, dimension(kmaxx, kmaxx), save      :: alf
+            integer*4, parameter, dimension(kmaxx + 1) :: nseq = (/2, 4, 6, 8, 10, 12, 14, 16, 18/)
+            logical         :: reduct
+            logical, save   :: first = .true.
+            integer*4, save :: kmax, kopt
+            real*8, save    :: xnew, epsold = -1.
+            real*8          :: wrkmin, fact, work, scala, eps1, xest, errmax, red, h
+            integer         :: k, iq, i ,km, kk
 
             der = dydt (x, y)
 
@@ -165,9 +165,9 @@ module bstoer
         end subroutine bstep
 
         subroutine mmid (y, dydt, dydx, sizey, xs, htot, nstep, yout)
-            integer, intent(in) :: sizey, nstep
-            procedure(dydt_tem) :: dydt
-            real*8, intent(in)  :: xs, htot
+            integer*4, intent(in) :: sizey, nstep
+            procedure(dydt_tem)   :: dydt
+            real*8, intent(in)    :: xs, htot
             real*8, dimension(sizey)              :: ym, yn, dernew
             real*8, dimension(sizey), intent(in)  :: y, dydx
             real*8, dimension(sizey), intent(out) :: yout
@@ -197,8 +197,8 @@ module bstoer
         end subroutine mmid
 
         subroutine pzextr (iest, xest, yest, yz, dy, sizey, qcol, x)
-            integer, intent(in) :: iest, sizey
-            real*8, intent(in)  :: xest
+            integer*4, intent(in) :: iest, sizey
+            real*8, intent(in)    :: xest
             real*8, dimension(sizey)                 :: d
             real*8, dimension(sizey), intent(in)     :: yest
             real*8, dimension(sizey), intent(inout)  :: dy, yz

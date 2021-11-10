@@ -49,25 +49,24 @@ beta   = 0.95   ! Learning rate
 e_tol  = 1e-12  ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
-filename = "Salida.txt"
+filename = "3_bodies"
 !------------------------------------------------------
 
 !-------------- SET DERIVED PARAMETERS --------------
-! Set almos everything
+! Set almost everything
 call set_initial_params ((/a1, a2/), Q, alp, r, m, C, mu, mp, n, k2dt, TSk)
 
 ! Calculated LOOP parameters
 n_iter = int ((tf - t0) / dt, kind=8)
-Logt   = exp (log (tf - t0) / (n_points - 1))
-t_add  = Logt
+Logt   = exp (log (tf - t0) / (real (n_points, kind=8) - 1.))
 print *, "Max Iterations:", n_iter
 !------------------------------------------------------
 
 !------------------------ FILE ------------------------
-inquire (file=trim (filename), exist=file_exists)
+inquire (file=trim (filename)//".txt", exist=file_exists)
 
 if (file_exists) then
-    print '("File ",A, " already exists.")', trim (filename)
+    print '("File ",A, " already exists.")', trim (filename)//".txt"
     print*, "Overwrite file:"
     print*, "    [Y]: Yes."
     print*, "      N: No."
@@ -83,7 +82,7 @@ if (file_exists) then
     end select
 end if
 
-open (20, file=trim (filename)//".params", status='replace')
+open (20, file=trim (filename)//"_params.txt", status='replace')
 write (20, '(27(A,1X))') "m0", "r0", "al0", "Q0", &
                        & "m1", "r1", "al1", "Q1", &
                        & "m2", "r2", "al2", "Q2", &
@@ -106,44 +105,50 @@ close (20)
 call cpu_time (start_time)
 
 ! Output file
-open (10, file=trim (filename), status='replace')
+open (10, file=trim (filename)//".txt", status='replace')
 !------------------------------------------------------
 
 !------------------------ LOOP ------------------------
 
-! Initial parameters
+! Initial parameters & Run variables
 call set_y0 (s0, o0, y0)
 call set_yi (a1, e1, s1, o1, vp1, y1)
 call set_yi (a2, e2, s2, o2, vp2, y2)
 call set_big_y (y0, y1, y2, y)
 t       = t0
-t_out   = t0 + t_add
+t_out   = t0
+t_add   = 1.
 dt_min  = dt
 dt_adap = dt ! For adaptive step
 i       = 0
 
-! Aux parameters
-aux1 = r(1) * 4.
+! Aux parameters (Roche)
+aux1 = (r(2) / 0.462) * (m(1) / m(2))**(1/3.)
+aux2 = (r(3) / 0.462) * (m(1) / m(3))**(1/3.)
+! Aux parameter (Change dt if BStoer)
+aux3 = dt
 
 ! Do loop
 do while (t < tf)
     ! CHECK
     !! s0, o0, a1, K1, s1, o1, H1, a2, K2, s2, o2, H2
     !!  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12
-    if (min (y(3), y(8)) < aux1) then
+    if ((y(3) .le. aux1) .or. (y(8) .le. aux2)) then
         write (*,*) "End of RUN. [Encounter]"
         exit
     end if
 
     ! Output
-    if (t >= t_out) then
-        t_add = t_add * Logt
-        t_out = t0 + t_add
+    if (t .ge. t_out) then
+        do while (t_out .le. t)
+            t_add = t_add * Logt
+            t_out = t0 + t_add
+        end do
         write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
-        ! write (*, "(A8, 12(E14.4, 1X))") "Valores:", y
         write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
-        if (dt_adap .ne. dt) then
-            dt = t_out - t
+        if ((dt_adap .ne. dt) .and. (dt .eq. aux3)) then
+            dt   = max (t_out - t, dt_min)
+            aux3 = dt
         end if
     end if
     
@@ -154,9 +159,9 @@ do while (t < tf)
     call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
-    ynew(2)  = max (min_val, mod (ynew(2), TWOPI))
-    ynew(6)  = max (min_val, mod (ynew(6), TWOPI))
-    ynew(11) = max (min_val, mod (ynew(11), TWOPI))
+    ynew(2)  = max (MIN_VAL, mod (ynew(2), TWOPI))
+    ynew(6)  = max (MIN_VAL, mod (ynew(6), TWOPI))
+    ynew(11) = max (MIN_VAL, mod (ynew(11), TWOPI))
     
     ! Update parameters
     i  = i + 1
@@ -177,7 +182,15 @@ call cpu_time (final_time)
 ! Messages
 print '("Total iterations:",I11)', i
 print '("Final time:",E16.6," [yrs]")', t / YR2DAY
-print '("Total running time:",F10.4," [sec].")', final_time - start_time
+aux1 = final_time - start_time
+if (aux1 .gt. 3600.) then
+    print '("Total running time:",F10.4," [hs].")', aux1 / 3600.
+else if (aux1 .gt. 60.) then
+    print '("Total running time:",F10.4," [min].")', aux1 / 60.
+else
+    print '("Total running time:",F10.4," [seg].")', aux1
+end if
+
 !------------------------------------------------------
 
 end program tidal
