@@ -183,9 +183,9 @@ call cpu_time (final_time)
 print '("Total iterations:",I11)', i
 print '("Final time:",E16.6," [yrs]")', t / YR2DAY
 aux1 = final_time - start_time
-if (aux1 .gt. 3600.) then
+if (aux1 > 3600.) then
     print '("Total running time:",F10.4," [hs].")', aux1 / 3600.
-else if (aux1 .gt. 60.) then
+else if (aux1 > 60.) then
     print '("Total running time:",F10.4," [min].")', aux1 / 60.
 else
     print '("Total running time:",F10.4," [seg].")', aux1

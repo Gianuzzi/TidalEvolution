@@ -5,7 +5,7 @@ module integrators
         procedure(dydt_i_tem), pointer, nopass :: f_i => null ()
     end type dydt_i
     ! For adaptive step and implicit (might be overwritten)
-    integer*4         :: max_iter = 1000
+    integer*4         :: MAX_ITER = 5000
     real*8            :: e_tol = 1e-10, beta = 0.9
     real*8, parameter :: MAX_DT_FAC = 3.
 
@@ -231,7 +231,7 @@ module integrators
             do k = 0, max_iter
                 dy1 = dydt (t + dt, y1) * dt
                 y1  = y1 + dy1
-                if (abs (dy1) <= e_tol) then
+                if (abs (dy1) .le. e_tol) then
                     exit
                 end if 
             end do            
@@ -251,7 +251,7 @@ module integrators
             do k = 0, max_iter
                 dy1 = dydt (t + dt, y1) * dt
                 y1  = y1 + dy1
-                if (abs (dy1) <= e_tol) then
+                if (abs (dy1) .le. e_tol) then
                     exit
                 end if 
             end do            
@@ -480,7 +480,7 @@ module integrators
                 dt_adap = max (min (beta * dt_adap * (e_tol / e_calc)**(1./real (p)), dt_adap * 2.), dt_min)
             else
                 dt_adap = beta * dt_adap * (e_tol / e_calc)**(1./real (p + 1))
-                if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
+                if ((isnan (dt_adap)) .or. (dt_adap .le. dt_min)) then
                     dt_used = dt_min
                     dt_adap = dt_min
                     call integ (t, y, dt_adap, dydt, ynew)
@@ -510,8 +510,8 @@ module integrators
             y1 = y
             do i = 1, max_iter
                 dy1 = dydt (t + dt, y1) * dt
-                y1  = y1  + dy1
-                if (norm2 (dy1) <= e_tol) then
+                y1  = y1 + dy1
+                if (norm2 (dy1) .le. e_tol) then
                     exit
                 end if
             end do
@@ -790,13 +790,13 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, dimension(49), parameter         :: m = &
 
-               & (/   0.,     0.,     0.,    0.,     0.,    0., 0., & !k1
-               & 0.25,   0.25,     0.,    0.,     0.,    0., 0., & !k2
-               & 0.25,  0.125,  0.125,    0.,     0.,    0., 0., & !k3
-               &  0.5,     0.,   -0.5,    1.,     0.,    0., 0., & !k4
-               & 0.75, 0.1875,     0.,    0., 0.5625,    0., 0., & !k5
-               &   1.,  -3/7.,   2/7., 12/7., -12/7.,  8/7., 0., & !k6
-               &   0.,  7/90., 16/45., 6/45., 16/45., 7/90., 0.  & !y
+               & (/  0.,     0.,     0.,    0.,     0.,    0., 0., & !k1
+               &   0.25,   0.25,     0.,    0.,     0.,    0., 0., & !k2
+               &   0.25,  0.125,  0.125,    0.,     0.,    0., 0., & !k3
+               &    0.5,     0.,   -0.5,    1.,     0.,    0., 0., & !k4
+               &   0.75, 0.1875,     0.,    0., 0.5625,    0., 0., & !k5
+               &     1.,  -3/7.,   2/7., 12/7., -12/7.,  8/7., 0., & !k6
+               &     0.,  7/90., 16/45., 6/45., 16/45., 7/90., 0.  & !y
                & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
@@ -805,14 +805,14 @@ module integrators
         ! EMBEDDED
 
         !! Solver
-        recursive subroutine solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
+        recursive subroutine solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
             implicit none
             real*8, intent(in)                            :: t, e_tol, beta, dt_min
             real*8, intent(inout)                         :: dt_adap, dt_used
             real*8, dimension(:), intent(in)              :: y
             real*8, dimension(:,:), intent(in)            :: m
             integer*4, intent(in)                         :: osol, oerr
-            integer*4                                     :: i, s
+            integer*4                                     :: i, s, iter = 1
             real*8, dimension(size (m,1) - 1), intent(in) :: maux
             real*8, dimension(size (y))                   :: yaux
             real*8, dimension(size (m,1) - 1, size (y))   :: rk
@@ -820,12 +820,11 @@ module integrators
             real*8, dimension(size (y)), intent(out)      :: ynew            
             real*8                                        :: e_calc, ratio
 
-            s = size (m, 1)
-
+            
             dt_adap = max (dt_adap, dt_min)
+            s       = size (m, 1)
 
             call get_rks (t, y, dt_adap, dydt, m, rk)
-            
             do i = 1, size (y)
                 yaux(i) = y(i) + dt_adap * dot_product (   maux, rk(:,i))
                 ynew(i) = y(i) + dt_adap * dot_product (m(2:,s), rk(:,i))
@@ -833,20 +832,23 @@ module integrators
 
             e_calc = norm2 (ynew - yaux)
             ratio = e_tol / e_calc
-            if (ratio > 1.) then
+            if ((ratio > 1.) .or. (iter .eq. MAX_ITER)) then
                 dt_used = dt_adap
                 dt_adap = dt_adap * min (beta * ratio**(1. / osol), MAX_DT_FAC)
+                iter = 1
             else
                 dt_adap = dt_adap * min (beta * ratio**(1. / oerr), MAX_DT_FAC)
                 if ((isnan (dt_adap)) .or. (dt_adap < dt_min)) then
                     dt_adap = dt_min
                     dt_used = dt_min
                     call solve_rk (t, y, dt_adap, dydt, m, ynew)
+                    iter = 1
                 else
-                    call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
+                    call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, m, maux, osol, oerr, ynew)
+                    iter = iter + 1
                 end if 
             end if
-        end subroutine solve_embeed
+        end subroutine solve_embed
 
         subroutine Heun_Euler2_1 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
@@ -862,7 +864,7 @@ module integrators
                &   0., 0.5, 0.5  & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/3,3/)), maux, 2, 1, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/3,3/)), maux, 2, 1, ynew)
         end subroutine Heun_Euler2_1
 
         subroutine Fehlberg1_2 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -880,7 +882,7 @@ module integrators
                &   0., 1/256., 255/256.,     0.  & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/4,4/)), maux, 1, 2, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/4,4/)), maux, 1, 2, ynew)
         end subroutine Fehlberg1_2
 
         subroutine Bogacki_Shampine3_2 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -892,14 +894,14 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(4)          :: maux = (/7/24., 0.25, 1/3., 0.125/)
             real*8, parameter, dimension(25)         :: m    = &
-               & (/ 0.,   0.,   0.,   0., 0., & !k1
-               &   0.5,  0.5,   0.,   0., 0., & !k2
-               &  0.75,   0., 0.75,   0., 0., & !k3
-               &    1., 2/9., 1/3., 4/9., 0., & !k4
-               &    0., 2/9., 1/3., 4/9., 0.  & !y
+               & (/  0.,   0.,   0.,   0., 0., & !k1
+               &    0.5,  0.5,   0.,   0., 0., & !k2
+               &   0.75,   0., 0.75,   0., 0., & !k3
+               &     1., 2/9., 1/3., 4/9., 0., & !k4
+               &     0., 2/9., 1/3., 4/9., 0.  & !y
                & /)
                
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/5,5/)), maux, 3, 2, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/5,5/)), maux, 3, 2, ynew)
         end subroutine Bogacki_Shampine3_2
 
         subroutine Zonneveld4_3 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -911,14 +913,14 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(5)          :: maux = (/-0.5, 7/3., 7/3., 13/16., -16/3./)
             real*8, parameter, dimension(36)         :: m    = &
-               & (/ 0.,    0.,    0.,     0.,     0.,  0., & !k1
-               &   0.5,   0.5,    0.,     0.,     0.,  0., & !k2
-               &   0.5,    0.,   0.5,     0.,     0.,  0., & !k3
-               &    1.,    0.,    0.,     1.,     0.,  0., & !k4
-               &  0.75, 5/32., 7/32., 13/32., -1/32.,  0., & !k5
-               &    0.,  1/6.,  1/3.,   1/3.,   1/6.,  0.  & !y
+               & (/  0.,    0.,    0.,     0.,     0.,  0., & !k1
+               &    0.5,   0.5,    0.,     0.,     0.,  0., & !k2
+               &    0.5,    0.,   0.5,     0.,     0.,  0., & !k3
+               &     1.,    0.,    0.,     1.,     0.,  0., & !k4
+               &   0.75, 5/32., 7/32., 13/32., -1/32.,  0., & !k5
+               &     0.,  1/6.,  1/3.,   1/3.,   1/6.,  0.  & !y
                & /)
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 3, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 3, ynew)
         end subroutine Zonneveld4_3
 
         subroutine Merson4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -930,14 +932,14 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(5)          :: maux = (/0.1, 0., 0.3, 0.4, 0.2/)
             real*8, parameter, dimension(36)         :: m    = &
-               & (/ 0.,    0.,   0.,     0.,   0.,   0., & !k1
-               &  1/3.,  1/3.,   0.,     0.,   0.,   0., & !k2
-               &  1/3.,  1/6., 1/6.,     0.,   0.,   0., & !k3
-               &   0.5, 0.125,   0.,  0.375,   0.,   0., & !k4
-               &    1.,   0.5,   0.,   -1.5,   2.,   0., & !k5
-               &    0.,   1/6.,  0.,     0., 2/3., 1/6.  & !y
+               & (/  0.,    0.,   0.,     0.,   0.,   0., & !k1
+               &   1/3.,  1/3.,   0.,     0.,   0.,   0., & !k2
+               &   1/3.,  1/6., 1/6.,     0.,   0.,   0., & !k3
+               &    0.5, 0.125,   0.,  0.375,   0.,   0., & !k4
+               &     1.,   0.5,   0.,   -1.5,   2.,   0., & !k5
+               &     0.,   1/6.,  0.,     0., 2/3., 1/6.  & !y
                & /)
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 5, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/6,6/)), maux, 4, 5, ynew)
         end subroutine Merson4_5
 
         subroutine Fehlberg4_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -949,16 +951,16 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(6)          :: maux = (/16/135., 0., 6656/12825., 28561/56430., -0.18, 2/55./)
             real*8, parameter, dimension(49)         :: m    = &
-               & (/   0.,         0.,          0.,          0.,         0.,      0., 0., & !k1
-               &    0.25,       0.25,          0.,          0.,         0.,      0., 0., & !k2
-               &   0.375,      3/32.,       9/32.,          0.,         0.,      0., 0., & !k3
-               &  12/13., 1932/2197., -7200/2197.,  7296/2197.,         0.,      0., 0., & !k4
-               &      1.,   439/216.,         -8.,   3680/513., -845/4104.,      0., 0., & !k5
-               &     0.5,     -8/27.,          2., -3544/2565., 1859/4104., -11/40., 0., & !k6
-               &      0.,    25/216.,          0.,  1408/2565., 2197/4104.,    -0.2, 0.  & !y
+               & (/    0.,         0.,          0.,          0.,         0.,      0., 0., & !k1
+               &     0.25,       0.25,          0.,          0.,         0.,      0., 0., & !k2
+               &    0.375,      3/32.,       9/32.,          0.,         0.,      0., 0., & !k3
+               &   12/13., 1932/2197., -7200/2197.,  7296/2197.,         0.,      0., 0., & !k4
+               &       1.,   439/216.,         -8.,   3680/513., -845/4104.,      0., 0., & !k5
+               &      0.5,     -8/27.,          2., -3544/2565., 1859/4104., -11/40., 0., & !k6
+               &       0.,    25/216.,          0.,  1408/2565., 2197/4104.,    -0.2, 0.  & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 4, 5, ynew)
         end subroutine Fehlberg4_5
 
         subroutine Cash_Karp5_4 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -970,16 +972,16 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(6)          :: maux = (/2825/27648., 0., 18575/48384., 13525/55296., 277/14336., 0.25/)
             real*8, parameter, dimension(49)         :: m    = &
-               & (/  0.,          0.,       0.,         0.,            0.,        0.,        0., & !k1
-               &    0.2,         0.2,       0.,         0.,            0.,        0.,        0., & !k2
-               &    0.3,       0.075,    0.225,         0.,            0.,        0.,        0., & !k3
-               &    0.6,         0.3,     -0.9,        1.2,            0.,        0.,        0., & !k4
-               &     1.,     -11/54.,      2.5,    -70/27.,        35/27.,        0.,        0., & !k5
-               &  0.875, 1631/55296., 175/512., 575/13824., 44275/110592., 253/4096.,        0., & !k6
-               &     0.,     37/378.,       0.,   250/621.,      125/594.,        0., 512/1771.  & !y
+               & (/   0.,          0.,       0.,         0.,            0.,        0.,        0., & !k1
+               &     0.2,         0.2,       0.,         0.,            0.,        0.,        0., & !k2
+               &     0.3,       0.075,    0.225,         0.,            0.,        0.,        0., & !k3
+               &     0.6,         0.3,     -0.9,        1.2,            0.,        0.,        0., & !k4
+               &      1.,     -11/54.,      2.5,    -70/27.,        35/27.,        0.,        0., & !k5
+               &   0.875, 1631/55296., 175/512., 575/13824., 44275/110592., 253/4096.,        0., & !k6
+               &      0.,     37/378.,       0.,   250/621.,      125/594.,        0., 512/1771.  & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 5, 4, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/7,7/)), maux, 5, 4, ynew)
         end subroutine Cash_Karp5_4
 
         subroutine Dormand_Prince5_4 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1002,7 +1004,7 @@ module integrators
                &     0.,     35/384.,           0.,   500/1113.,  125/192.,  -2187/6784., 11/84., 0.  & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/8,8/)), maux, 5, 4, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/8,8/)), maux, 5, 4, ynew)
         end subroutine Dormand_Prince5_4
 
         subroutine Verner6_5 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1014,18 +1016,18 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, parameter, dimension(8)          :: maux = (/13/160., 0., 2375/5984., 5/16., 12/85., 3/44., 0., 0./)
             real*8, parameter, dimension(81)         :: m    = &
-               & (/  0.,           0.,       0.,            0.,         0.,           0., 0.,          0.,      0., & !k1
-               &   1/6.,         1/6.,       0.,            0.,         0.,           0., 0.,          0.,      0., & !k2
-               &  4/15.,        4/75.,   16/75.,            0.,         0.,           0., 0.,          0.,      0., & !k3
-               &   2/3.,         5/6.,    -8/3.,           2.5,         0.,           0., 0.,          0.,      0., & !k4
-               &   5/6.,     -165/64.,    55/6.,      -425/64.,     85/96.,           0., 0.,          0.,      0., & !k5
-               &     1.,          2.4,      -8.,     4015/612.,    -11/36.,      88/255., 0.,          0.,      0., & !k6
-               &  1/15., -8263/15000.,  124/75.,     -643/680.,     -0.324,  2484/10625., 0.,          0.,      0., & !k8
-               &     1.,   3501/1720., -300/43., 297275/52632., -319/2322., 24068/84065., 0., 3850/26703.,      0., & !k8
-               &     0.,        0.075,       0.,     875/2244.,     23/72.,    264/1955., 0.,  125/11592., 43/616.  & !y
+               & (/   0.,           0.,       0.,            0.,         0.,           0., 0.,          0.,      0., & !k1
+               &    1/6.,         1/6.,       0.,            0.,         0.,           0., 0.,          0.,      0., & !k2
+               &   4/15.,        4/75.,   16/75.,            0.,         0.,           0., 0.,          0.,      0., & !k3
+               &    2/3.,         5/6.,    -8/3.,           2.5,         0.,           0., 0.,          0.,      0., & !k4
+               &    5/6.,     -165/64.,    55/6.,      -425/64.,     85/96.,           0., 0.,          0.,      0., & !k5
+               &      1.,          2.4,      -8.,     4015/612.,    -11/36.,      88/255., 0.,          0.,      0., & !k6
+               &   1/15., -8263/15000.,  124/75.,     -643/680.,     -0.324,  2484/10625., 0.,          0.,      0., & !k8
+               &      1.,   3501/1720., -300/43., 297275/52632., -319/2322., 24068/84065., 0., 3850/26703.,      0., & !k8
+               &      0.,        0.075,       0.,     875/2244.,     23/72.,    264/1955., 0.,  125/11592., 43/616.  & !y
                & /)
          
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/9,9/)), maux, 6, 5, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/9,9/)), maux, 6, 5, ynew)
         end subroutine Verner6_5
 
         subroutine Fehlberg7_8 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1068,7 +1070,7 @@ module integrators
                          & 9/280., 41/840., 0., 0. & !y
                & /)
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 7, 8, ynew)
         end subroutine Fehlberg7_8
 
         subroutine Dormand_Prince8_7 (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, ynew)
@@ -1141,7 +1143,7 @@ module integrators
                & /)
 
 
-            call solve_embeed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 8, 7, ynew)
+            call solve_embed (t, y, dt_adap, dydt, e_tol, beta, dt_min, dt_used, reshape (m, shape=(/14,14/)), maux, 8, 7, ynew)
         end subroutine Dormand_Prince8_7
 
         ! RK Adap
@@ -1152,29 +1154,36 @@ module integrators
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
             procedure(integ_tem)                     :: integ
             real*8, dimension(:), intent(in)         :: y
-            real*8, dimension(size (y))              :: yaux
+            real*8, dimension(size (y))              :: yhalf, yaux
             procedure(dydt_tem)                      :: dydt
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, intent(inout)                    :: dt_adap, dt_used
-            real*8                                   :: e_calc, ratio
+            real*8                                   :: e_calc, ratio, hdt_adap
+            integer*4                                :: iter = 1
 
             dt_adap  = max (dt_adap, dt_min)
-            call integ (t, y,       dt_adap, dydt, ynew)
-            call integ (t, y, 0.5 * dt_adap, dydt, yaux)
+            hdt_adap = 0.5 * dt_adap
+
+            call integ (           t,     y,  dt_adap, dydt,  ynew)
+            call integ (           t,     y, hdt_adap, dydt, yhalf)                       
+            call integ (t + hdt_adap, yhalf, hdt_adap, dydt,  yaux)
 
             e_calc =  norm2 (ynew - yaux) / (2.**p - 1.)
             ratio  = e_tol / e_calc
-            if (ratio < 1.) then
+            if ((ratio > 1.) .or. (iter .eq. MAX_ITER)) then
                 dt_used = dt_adap
-                dt_adap = dt_adap * min (beta * ratio**(1./real (p)), MAX_DT_FAC)
-            else
                 dt_adap = dt_adap * min (beta * ratio**(1./real (p + 1)), MAX_DT_FAC)
-                if ((isnan (dt_adap)) .or. (dt_adap <= dt_min)) then
+                iter    = 1
+            else
+                dt_adap = dt_adap * min (beta * ratio**(1./real (p)), MAX_DT_FAC)
+                if ((isnan (dt_adap)) .or. (dt_adap .le. dt_min)) then
                     dt_used = dt_min
                     dt_adap = dt_min
                     call integ (t, y, dt_adap, dydt, ynew)
+                    iter = 1
                 else
                     call rk_adap_caller (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
+                    iter = iter + 1
                 end if
             end if
         end subroutine rk_adap_caller
