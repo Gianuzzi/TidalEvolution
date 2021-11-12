@@ -21,7 +21,7 @@ Los parametros iniciales de los cuerpos utilizados son:
 
 Los parametros iniciales de la integración son:
 - t0: Tiempo inicial _t_<sub>0</sub>. [Día]
-- dt: Paso de tiempo mínimo e inicial _dt_. [Día]
+- dt_min: Paso de tiempo para integradores de paso fijo, o mínimo *dt_min*. [Día]
 - tf: Tiempo final _t_<sub>f</sub>. [Día]
 - n_points: Cantiad aproximada de datos de salida.
 - beta: Tasa de aprendizaje, en caso que se utilize un integrador de paso adaptativo β.
@@ -33,7 +33,7 @@ Se puede modificar el **integrador utilizado**, como también las **fuerzas invo
 #### **Integrador**
 Se debe utilar uno de los 4 métodos disponibles: *integ_caller*, *implicit_caller*, *rec_rk_adap*, o *embedded_caller*. 
 
-Esto se realiza en la líneas _155-159_ del archivo [main.F90](./main.F90#L155#L159). 
+Esto se realiza en la líneas _147-151_ del archivo [main.F90](./main.F90#L147#L151). 
 ```fortran
     !!! Execute an integration method (uncomment/edit one of theese)
     ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
