@@ -275,7 +275,7 @@ module integrators
 
         !! Implicit Methods
 
-        subroutine euler_backward (t, y, dt, dydt, max_iter, e_tol, ynew)
+        subroutine Euler_backward (t, y, dt, dydt, max_iter, e_tol, ynew)
             implicit none
             integer*4, intent(in)                    :: max_iter
             real*8, intent(in)                       :: t, dt, e_tol
@@ -287,9 +287,9 @@ module integrators
             call solve_implicit (t, y, dt, dydt, max_iter, e_tol, y1)
 
             ynew = y + 0.5 * dydt (t + dt, y1) * dt
-        end subroutine euler_backward
+        end subroutine Euler_backward
 
-        subroutine euler_centred (t, y, dt, dydt, max_iter, e_tol, ynew)
+        subroutine Euler_centred (t, y, dt, dydt, max_iter, e_tol, ynew)
             implicit none
             integer*4, intent(in)                    :: max_iter
             real*8, intent(in)                       :: t, dt, e_tol
@@ -301,13 +301,13 @@ module integrators
             call solve_implicit (t, y, dt, dydt, max_iter, e_tol, y1)
 
             ynew = y + 0.5 * (dydt (t + dt, y1) + dydt (t, y)) * dt
-        end subroutine euler_centred
+        end subroutine Euler_centred
 
         !!
 
         !! Runge Kutta Methods
 
-        subroutine euler_forward (t, y, dt, dydt, ynew)
+        subroutine Euler1 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -319,9 +319,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/2,2/)), ynew)
-        end subroutine euler_forward
+        end subroutine Euler1
 
-        subroutine rungek2 (t, y, dt, dydt, ynew)
+        subroutine Heun2 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -334,7 +334,7 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/3,3/)), ynew)
-        end subroutine rungek2
+        end subroutine Heun2
 
         subroutine midpoint2 (t, y, dt, dydt, ynew)
             implicit none
@@ -367,7 +367,7 @@ module integrators
             call solve_rk (t, y, dt, dydt, reshape (m, (/3,3/)), ynew)
         end subroutine strange2
 
-        subroutine ralston2 (t, y, dt, dydt, ynew)
+        subroutine Ralston2 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -381,9 +381,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/3,3/)), ynew)
-        end subroutine ralston2
+        end subroutine Ralston2
 
-        subroutine rungek3 (t, y, dt, dydt, ynew)
+        subroutine Runge_Kutta3 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -398,9 +398,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/4,4/)), ynew)
-        end subroutine rungek3
+        end subroutine Runge_Kutta3
 
-        subroutine heun3 (t, y, dt, dydt, ynew)
+        subroutine Heun3 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -411,13 +411,13 @@ module integrators
               & (/  0.,   0.,   0.,   0., & !k1
               &   1/3., 1/3.,   0.,   0., & !k2
               &   2/3.,   0., 1/3.,   0., & !k3
-              &     0., 0.25, 1/3., 0.75  & !y
+              &     0., 0.25,   0., 0.75  & !y
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/4,4/)), ynew)
-        end subroutine heun3
+        end subroutine Heun3
 
-        subroutine ralston3 (t, y, dt, dydt, ynew)
+        subroutine Ralston3 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -432,9 +432,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/4,4/)), ynew)
-        end subroutine ralston3
+        end subroutine Ralston3
 
-        subroutine ssprk3 (t, y, dt, dydt, ynew)
+        subroutine SSPRK3 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -449,9 +449,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/4,4/)), ynew)
-        end subroutine ssprk3
+        end subroutine SSPRK3
 
-        subroutine ralston4 (t, y, dt, dydt, ynew)
+        subroutine Ralston4 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -467,9 +467,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/5,5/)), ynew)
-        end subroutine ralston4
+        end subroutine Ralston4
 
-        subroutine rungek4 (t, y, dt, dydt, ynew)
+        subroutine Runge_Kutta4 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -484,9 +484,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/5,5/)), ynew)
-        end subroutine rungek4
+        end subroutine Runge_Kutta4
 
-        subroutine rungek4_3oct (t, y, dt, dydt, ynew)
+        subroutine Runge_Kutta4_3oct (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -502,9 +502,9 @@ module integrators
               & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/5,5/)), ynew)
-        end subroutine rungek4_3oct
+        end subroutine Runge_Kutta4_3oct
 
-        subroutine rungek6 (t, y, dt, dydt, ynew)
+        subroutine Runge_Kutta6 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
             real*8, dimension(:), intent(in)         :: y
@@ -512,17 +512,17 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, dimension(49), parameter         :: m = &
 
-               & (/  0.,     0.,     0.,    0.,     0.,    0., 0., & !k1
-               &   0.25,   0.25,     0.,    0.,     0.,    0., 0., & !k2
-               &   0.25,  0.125,  0.125,    0.,     0.,    0., 0., & !k3
-               &    0.5,     0.,   -0.5,    1.,     0.,    0., 0., & !k4
-               &   0.75, 0.1875,     0.,    0., 0.5625,    0., 0., & !k5
-               &     1.,  -3/7.,   2/7., 12/7., -12/7.,  8/7., 0., & !k6
-               &     0.,  7/90., 16/45., 6/45., 16/45., 7/90., 0.  & !y
+               & (/  0.,     0.,    0.,     0.,     0.,     0.,    0., & !k1
+               &   0.25,   0.25,    0.,     0.,     0.,     0.,    0., & !k2
+               &   0.25,  0.125, 0.125,     0.,     0.,     0.,    0., & !k3
+               &    0.5,     0.,  -0.5,     1.,     0.,     0.,    0., & !k4
+               &   0.75, 0.1875,    0.,     0., 0.5625,     0.,    0., & !k5
+               &     1.,  -3/7.,  2/7.,  12/7., -12/7.,   8/7.,    0., & !k6
+               &     0.,  7/90.,    0., 16/45.,  6/45., 16/45., 7/90.  & !y
                & /)
             
             call solve_rk (t, y, dt, dydt, reshape (m, (/7,7/)), ynew)
-        end subroutine rungek6
+        end subroutine Runge_Kutta6
 
         !!
 
@@ -989,9 +989,9 @@ module integrators
         !   To: Faux(t, y__)
         !---------------------------------
 
-        ! Here dydt_vec is a pointer to an array of (f__1, ..., f__N);
+        ! Here dydt is a pointer to an array of (f__1, ..., f__N);
         !  so this is kind of a wrapper.
-        ! dydt_tem_w (t, y__, =>f__)
+        ! dydt_w (t, y__, =>f__)
         !   --> (f__1 (t, y__), ..., f__N (t, y__)) 
         !   --> (der_1, ..., der_N) = der__
         function dydt_wrapper (t, y, dydt) result (der)
@@ -1007,44 +1007,21 @@ module integrators
             end do
         end function dydt_wrapper
 
-        ! Here dydt_vec is a pointer to an array of (f__1, ..., f__N)
+        ! Here dydt is a pointer to an array of (f__1, ..., f__N)
         !  so this is kind of a wrapper.
-        ! integ_tem_w (t, y__, dt, =>f__, integ, ynew__) -->
+        ! implicit_tem_wrapper (t, y__, dt, =>f__, integ, max_iter, e_tol, dt_min, ynew__) -->
         !   CREATE Faux (t, y__) = (f__1 (t, y__), ..., f__N (t, y__)) = der__
-        !     --> integ (t, y__, dt, Faux__, ynew__) --> ynew__
-        subroutine integ_wrapper (t, y, dt, dydt, integ, ynew)
+        !     --> implicit_caller (t, y__, dt, Faux__, integ, max_iter, e_tol, dt_min, ynew) --> ynew__
+        subroutine implicit_tem_wrapper (t, y, dt, dydt, integ, max_iter, e_tol, dt_min, ynew)
             implicit none
-            real*8, intent(in)                       :: t, dt
-            real*8, dimension(:), intent(in)         :: y
-            type(dydt_i), dimension(size (y))        :: dydt
-            procedure(integ_tem)                     :: integ
-            real*8, dimension(size (y)), intent(out) :: ynew
-
-            call integ (t, y, dt, Faux, ynew)
-
-            contains
-
-                function Faux (ti, yi) result (der)
-                    implicit none
-                    real*8, intent(in)               :: ti
-                    real*8, dimension(:), intent(in) :: yi
-                    real*8, dimension(size (yi))     :: der
-
-                    der = dydt_wrapper (ti, yi, dydt)
-                end function Faux
-        end subroutine integ_wrapper
-
-        ! Same as before, but for implicit_tem_wrapper integrator
-        subroutine implicit_tem_wrapper (t, y, dt, dydt, integ, max_iter, e_tol, ynew)
-            implicit none
-            real*8, intent(in)                       :: t, dt, e_tol
+            real*8, intent(in)                       :: t, dt, e_tol, dt_min
             integer*4, intent(in)                    :: max_iter
             real*8, dimension(:), intent(in)         :: y
             type(dydt_i), dimension(size (y))        :: dydt
             procedure(implicit_tem)                  :: integ
             real*8, dimension(size (y)), intent(out) :: ynew
 
-            call integ (t, y, dt, Faux, max_iter, e_tol, ynew)
+            call implicit_caller (t, y, dt, Faux, integ, max_iter, e_tol, dt_min, ynew)
 
             contains
             
@@ -1058,7 +1035,30 @@ module integrators
                 end function Faux
         end subroutine implicit_tem_wrapper
 
-        ! Same as before, but for embedded_tem_wrapper integrator
+        ! Same as before, but for integ_caller
+        subroutine integ_wrapper (t, y, dt, dydt, integ, dt_min, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, dt, dt_min
+            real*8, dimension(:), intent(in)         :: y
+            type(dydt_i), dimension(size (y))        :: dydt
+            procedure(integ_tem)                     :: integ
+            real*8, dimension(size (y)), intent(out) :: ynew
+
+            call integ_caller (t, y, dt, Faux, integ, dt_min, ynew)
+
+            contains
+
+                function Faux (ti, yi) result (der)
+                    implicit none
+                    real*8, intent(in)               :: ti
+                    real*8, dimension(:), intent(in) :: yi
+                    real*8, dimension(size (yi))     :: der
+
+                    der = dydt_wrapper (ti, yi, dydt)
+                end function Faux
+        end subroutine integ_wrapper
+
+        ! Same as before, but for embedded_caller
         subroutine embedded_tem_wrapper (t, y, dt_adap, dydt, integ, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             real*8, intent(in)                       :: t, e_tol, beta, dt_min
@@ -1068,7 +1068,7 @@ module integrators
             procedure(embedded_tem)                  :: integ
             real*8, dimension(size (y)), intent(out) :: ynew
 
-            call integ (t, y, dt_adap, Faux, e_tol, beta, dt_min, dt_used, ynew)
+            call embedded_caller (t, y, dt_adap, Faux, integ, e_tol, beta, dt_min, dt_used, ynew)
 
             contains
             
@@ -1082,7 +1082,7 @@ module integrators
                 end function Faux
         end subroutine embedded_tem_wrapper
 
-        ! Same as before, but for rk_adap integrator
+        ! Same as before, but for rk_half_step_caller
         subroutine rk_adap_wrapper (t, y, dt_adap, dydt, integ, p, e_tol, beta, dt_min, dt_used, ynew)
             implicit none
             integer*4, intent(in)                    :: p
