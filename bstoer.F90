@@ -16,29 +16,21 @@ module bstoer
     contains
 
         !! Bulirsch Stoer main integrator
-
-        subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dummy, dt_min, dt_used, ynew)
+    
+        subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dummy1, dummy2, dt_used, ynew)
             implicit none
-            real*8, intent(in)                       :: t, e_tol, dt_min, dummy
+            real*8, intent(in)                       :: t, e_tol, dummy1, dummy2
             real*8, intent(inout)                    :: dt_adap, dt_used
             real*8, dimension(:), intent(in)         :: y
             procedure(dydt_tem)                      :: dydt
             real*8, dimension(size (y)), intent(out) :: ynew
-            real*8                                   :: time, tf, dt_done, dt_next
+            real*8                                   :: time, dtry
             integer*4, save                          :: sizey
             
-            dt_used = max (dt_min, dt_used)
-            ynew    = y
-            time    = t
-            tf      = time + dt_used
-            sizey   = size (y)
-            do while (time < tf)
-                if (time + dt_adap > tf) then
-                    dt_adap = tf - time
-                end if
-                call bstep (ynew, dydt, sizey, time, dt_adap, e_tol, dt_done, dt_next)
-                dt_adap = dt_next
-            end do
+            sizey = size (y)
+            time  = t
+            dtry  = dt_adap
+            call bstep (ynew, dydt, sizey, time, dtry, e_tol, dt_used, dt_adap)
         end subroutine Bulirsch_Stoer
 
         !!

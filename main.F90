@@ -39,10 +39,10 @@ alp(3) = 0.4             ! []
 Q(3)   = 1.e5            ! [?]
 
 ! Run conditions
-t0       = 0. * YR2DAY      ! [days]
-dt       = 0.0001 * YR2DAY  ! [days] ![First & min]
-tf       = 5.e9 * YR2DAY    ! [days]
-n_points = 5000             ! Approx N_output
+t0       = 0. * YR2DAY   ! [days]
+dt_min   = 1e-4 * YR2DAY ! [days] ![For fixed dt integrators]
+tf       = 5.e9 * YR2DAY ! [days]
+n_points = 5000          ! Approx N_output
 
 ! Integration conditions
 beta   = 0.95   ! Learning rate
@@ -57,9 +57,7 @@ filename = "3_bodies"
 call set_initial_params ((/a1, a2/), Q, alp, r, m, C, mu, mp, n, k2dt, TSk)
 
 ! Calculated LOOP parameters
-n_iter = int ((tf - t0) / dt, kind=8)
-Logt   = exp (log (tf - t0) / (real (n_points, kind=8) - 1.))
-print *, "Max Iterations:", n_iter
+Logt = exp (log (tf - t0) / (real (n_points, kind=8) - 1.))
 !------------------------------------------------------
 
 !------------------------ FILE ------------------------
@@ -89,14 +87,14 @@ write (20, '(27(A,1X))') "m0", "r0", "al0", "Q0", &
                        & "s0", "o0", &
                        & "a1", "e1", "s1", "o1", "vp1", &
                        & "a2", "e2", "s2", "o2", "vp2", &
-                       & "t0", "dt", "tf"
+                       & "t0", "dt_min", "tf"
 write (20,'(27(E16.9,1X))') m(1), r(1), alp(1), Q(1), &
                           & m(2), r(2), alp(2), Q(2), &
                           & m(3), r(3), alp(3), Q(3), &
                           & s0, o0, &
                           & a1, e1, s1, o1, vp1, &
                           & a2, e2, s2, o2, vp2, &
-                          & t0, dt, tf
+                          & t0, dt_min, tf
 close (20)
 !------------------------------------------------------
 
@@ -110,52 +108,46 @@ open (10, file=trim (filename)//".txt", status='replace')
 
 !------------------------ LOOP ------------------------
 
-! Initial parameters & Run variables
+! Initial parameters
 call set_y0 (s0, o0, y0)
 call set_yi (a1, e1, s1, o1, vp1, y1)
 call set_yi (a2, e2, s2, o2, vp2, y2)
 call set_big_y (y0, y1, y2, y)
-t       = t0
-t_out   = t0
-t_add   = 1.
-dt_min  = dt
-dt_adap = dt ! For adaptive step
-i       = 0
 
 ! Aux parameters (Roche)
 aux1 = (r(2) / 0.462) * (m(1) / m(2))**(1/3.)
 aux2 = (r(3) / 0.462) * (m(1) / m(3))**(1/3.)
-! Aux parameter (Change dt if BStoer)
-aux3 = dt
+
+! Run variables
+t       = t0         ! Init time
+dt      = Logt       ! First dt
+t_add   = Logt       ! For incrementing t_out
+t_out   = t0 + t_add ! First output time
+dt_adap = dt         ! For adaptive step
+i       = 0          ! Counter
+
+! Write initial conditions
+write (*, "(I11, 3(E14.4, 1X))") i, t, dt, dt_adap
+write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
 
 ! Do loop
 do while (t < tf)
-    ! CHECK
+    ! CHECK ENCOUNTERS
     !! s0, o0, a1, K1, s1, o1, H1, a2, K2, s2, o2, H2
     !!  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12
-    if ((y(3) .le. aux1) .or. (y(8) .le. aux2)) then
-        write (*,*) "End of RUN. [Encounter]"
+    if (y(3) .le. aux1) then
+        write (*,*) "End of RUN. [Encounter of planet 1]"
         exit
     end if
-
-    ! Output
-    if (t .ge. t_out) then
-        do while (t_out .le. t)
-            t_add = t_add * Logt
-            t_out = t0 + t_add
-        end do
-        write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
-        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
-        if ((dt_adap .ne. dt) .and. (dt .eq. aux3)) then
-            dt   = max (t_out - t, dt_min)
-            aux3 = dt
-        end if
+    if (y(8) .le. aux2) then
+        write (*,*) "End of RUN. [Encounter of planet 2]"
+        exit
     end if
     
     !!! Execute an integration method (uncomment/edit one of theese)
-    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, ynew)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, ynew)
-    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek6, 6, e_tol, beta, dt_min, dt, ynew)
+    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
+    ! call integ_caller (t, y, dt, dydtidall, rungek6, dt_min, ynew)
+    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
     call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
@@ -168,7 +160,22 @@ do while (t < tf)
     t  = t + dt
     y  = ynew
     
+    ! Output & dt
+    if (t .ge. t_out) then
+        do while (t_out .le. t)
+            t_add = t_add * Logt
+            t_out = t0 + t_add
+        end do
+        if ((t_out > tf) .or. ((abs (t_out - tf) / tf) .le. e_tol)) then
+            t_out = tf
+        end if
+        dt = t_out - t
+        write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
+        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
+    end if
+    
 end do
+
 !------------------------------------------------------
 
 !------------------------ END -------------------------
@@ -194,5 +201,3 @@ end if
 !------------------------------------------------------
 
 end program tidal
-
-
