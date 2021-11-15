@@ -123,7 +123,7 @@ t       = t0         ! Init time
 dt      = Logt       ! First dt
 t_add   = Logt       ! For incrementing t_out
 t_out   = t0 + t_add ! First output time
-dt_adap = dt         ! For adaptive step
+dt_adap = dt_min     ! For adaptive step
 i       = 0          ! Counter
 
 ! Write initial conditions
@@ -145,9 +145,8 @@ do while (t < tf)
     end if
     
     !!! Execute an integration method (uncomment/edit one of theese)
-    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, dt_min, ynew)
-    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
+    ! call integ_caller (t, y, dt_adap, dydtidall, Runge_Kutta6, dt, ynew)
+    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, Runge_Kutta6, 6, e_tol, beta, dt_min, dt, ynew)
     call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles

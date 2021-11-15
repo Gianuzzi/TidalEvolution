@@ -21,7 +21,7 @@ Los parametros iniciales de los cuerpos utilizados son:
 
 Los parametros iniciales de la integración son:
 - t0: Tiempo inicial _t_<sub>0</sub>. [Día]
-- dt_min: Paso de tiempo para integradores de paso fijo, o mínimo *dt_min*. [Día]
+- dt_min: Paso de tiempo para integradores de paso fijo, o mínimo _dt_<sub>min</sub>. [Día]
 - tf: Tiempo final _t_<sub>f</sub>. [Día]
 - n_points: Cantiad aproximada de datos de salida.
 - beta: Tasa de aprendizaje, en caso que se utilize un integrador de paso adaptativo β.
@@ -36,17 +36,17 @@ Se debe utilar uno de los 4 métodos disponibles: *integ_caller*, *implicit_call
 Esto se realiza en la líneas _147-151_ del archivo [main.F90](./main.F90#L147#L151). 
 ```fortran
     !!! Execute an integration method (uncomment/edit one of theese)
-    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, dt_min, ynew)
-    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
+    ! call implicit_caller (t, y, dt_adap, dydtidall, Euler_centred, max_iter, e_tol, dt, ynew)
+    ! call integ_caller (t, y, dt_adap, dydtidall, Runge_Kutta6, dt, ynew)
+    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, Runge_Kutta6, 6, e_tol, beta, dt_min, dt, ynew)
     call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
 ```
 
-- *implicit_caller*: Se puede modificar el integrador (```euler_centred```) por cualquier otro que sea implícito (no embebido), del archivo [integrators.F90](./integrators.F90#L276#L306). El paso _dt_ será constante, el igual al valor mínimo _dt_<sub>min</sub>. 
+- *implicit_caller*: Se puede modificar el integrador (```euler_centred```) por cualquier otro que sea implícito (no embebido), del archivo [integrators.F90](./integrators.F90#L276#L306). El paso _dt_<sub>adap</sub> será constante, el igual al valor mínimo _dt_<sub>min</sub>.
 
 - *integ_caller*: Igual a *implicit_caller*, pero solo se pueden introducir integradores de _Método Runge Kutta_ (no implícitos, ni embebidos, ver [integrators.F90](./integrators.F90#L308#L527)).
 
-- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```rungek4``` -> O(4)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L829#L871)). En este caso el error calculado será ϵ<sub>calc</sub> (≡ |<b>y</b><sub>real</sub> - <b>y</b><sub>pred</sub>|)/(2<sup>ord</sup> - 1).
+- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```Runge_Kutta6``` -> O(6)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L829#L871)). En este caso el error calculado será ϵ<sub>calc</sub> (≡ |<b>y</b><sub>real</sub> - <b>y</b><sub>pred</sub>|)/(2<sup>ord</sup> - 1).
 
 - *embedded_caller* (**recomendado**): Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores embebidos (ver [integrators.F90](./integrators.F90#L529#L827)), incluyendo al integrador *Bulirsch_Stoer* (**recomendado** si se introduce un ϵ<sub>tol</sub> < 10<sup>-8</sup>, ver [bstoer.F90](./bstoer.F90#L18#L36)).
 
