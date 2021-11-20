@@ -14,12 +14,38 @@ module bstoer
     end interface
 
     contains
+    
+        !---------------------------------
+        !   Call Bulirsch_Stoer
+        !---------------------------------
+        
+        subroutine BStoer_caller (t, y, dt_adap, dydt, e_tol, dt_min, dt, ynew)
+            implicit none
+            real*8, intent(in)                       :: t, e_tol, dt_min, dt
+            real*8, dimension(:), intent(in)         :: y
+            real*8, intent(inout)                    :: dt_adap
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, dimension(size (y))              :: yaux
+            real*8                                   :: time, t_end, dtmin, dtused
+
+            ynew  = y
+            time  = t
+            t_end = time + dt
+            dtmin = min (dt_min, dt)
+            do while (time < t_end)
+                yaux  = ynew
+                dt_adap = min (dt_adap, t_end - time)
+                call Bulirsch_Stoer (time, yaux, dt_adap, dydt, e_tol, dtused, ynew)
+                time = time + dtused
+            end do
+        end subroutine BStoer_caller
 
         !! Bulirsch Stoer main integrator
     
-        subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dummy1, dummy2, dt_used, ynew)
+        subroutine Bulirsch_Stoer (t, y, dt_adap, dydt, e_tol, dt_used, ynew)
             implicit none
-            real*8, intent(in)                       :: t, e_tol, dummy1, dummy2
+            real*8, intent(in)                       :: t, e_tol
             real*8, intent(inout)                    :: dt_adap, dt_used
             real*8, dimension(:), intent(in)         :: y
             procedure(dydt_tem)                      :: dydt
