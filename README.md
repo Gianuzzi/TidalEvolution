@@ -6,7 +6,7 @@ Este código fue desarrollado y utilizado para la materia *Evolución Tidal de S
 Si principal función es la evolución de un sistema orbital de 3 cuerpos, incluyendo efectos **tidales**, **gravitatorios** y **relativistas**; utilizando un sistema de referencia de _Jacobi_.
 
 ### Parámetros
-Al comienzo del archivo [main.F90](./main.F90#L9#L53) se encuentra un bloque para intorucir los parámetros de los 3 cuerpos, y de la integración.
+Al comienzo del archivo [main.F90](./main.F90#L9#L54) se encuentra un bloque para intorucir los parámetros de los 3 cuerpos, y de la integración.
 
 Los parametros iniciales de los cuerpos utilizados son:
 - m: Masa _m_. [M<sub>⊙</sub>]
@@ -21,38 +21,39 @@ Los parametros iniciales de los cuerpos utilizados son:
 
 Los parametros iniciales de la integración son:
 - t0: Tiempo inicial _t_<sub>0</sub>. [Día]
-- dt_min: Paso de tiempo para integradores de paso fijo, o mínimo *dt_min*. [Día]
+- dt_min: Paso de tiempo para integradores de paso fijo, o mínimo _dt_<sub>min</sub>. [Día]
 - tf: Tiempo final _t_<sub>f</sub>. [Día]
-- n_points: Cantiad aproximada de datos de salida.
 - beta: Tasa de aprendizaje, en caso que se utilize un integrador de paso adaptativo β.
 - e_tol: Error absoluto máximo, en caso que se utilize un integrador de paso adaptativo ϵ<sub>tol</sub> (≡ |<b>y</b><sub>real</sub> - <b>y</b><sub>pred</sub>|).
+- n_points: Cantiad aproximada de datos de salida.
+- logsp: Si la salida es log- (_True_) o equi- (_False_) espaciada.
 - filename: Nombre del archivo de salida.
 
 ### Implementaciones modificables por usuario
 Se puede modificar el **integrador utilizado**, como también las **fuerzas involucradas**.
 #### **Integrador**
-Se debe utilar uno de los 4 métodos disponibles: *integ_caller*, *implicit_caller*, *rec_rk_adap*, o *embedded_caller*. 
+Se debe utilar uno de los 4 métodos disponibles: *integ_caller*, *rk_half_step_caller*, *embedded_caller*, o *BStoer_caller*. 
 
-Esto se realiza en la líneas _147-151_ del archivo [main.F90](./main.F90#L147#L151). 
+Esto se realiza en la líneas _149-153_ del archivo [main.F90](./main.F90#L149#L153). 
 ```fortran
-    !!! Execute an integration method (uncomment/edit one of theese)
-    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, dt_min, ynew)
-    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-    call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
+!!! Execute an integration method (uncomment/edit one of theese)
+! call integ_caller (t, y, dt_adap, dydtidall, Runge_Kutta4, dt, ynew)
+! call rk_half_step_caller (t, y, dt_adap, dydtidall, Runge_Kutta5, 5, e_tol, beta, dt_min, dt, ynew)
+call embedded_caller (t, y, dt_adap, dydtidall, Dormand_Prince8_7, e_tol, beta, dt_min, dt, ynew)
+! call BStoer_caller (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
 ```
 
-- *implicit_caller*: Se puede modificar el integrador (```euler_centred```) por cualquier otro que sea implícito (no embebido), del archivo [integrators.F90](./integrators.F90#L276#L306). El paso _dt_ será constante, el igual al valor mínimo _dt_<sub>min</sub>. 
+- *integ_caller*: Se puede modificar el integrador (```Runge_Kutta4```) por cualquier otro que no sea embebido, entre los listados en el archivo [integrators.F90](./integrators.F90#L280#L647). El paso _dt_<sub>adap</sub> será constante, el igual al valor mínimo _dt_<sub>min</sub>.
 
-- *integ_caller*: Igual a *implicit_caller*, pero solo se pueden introducir integradores de _Método Runge Kutta_ (no implícitos, ni embebidos, ver [integrators.F90](./integrators.F90#L308#L527)).
+- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```Runge_Kutta5``` -> O(5)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L953#L1002)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|/(2<sup>ord</sup> - 1).
 
-- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```rungek4``` -> O(4)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L829#L871)). En este caso el error calculado será ϵ<sub>calc</sub> (≡ |<b>y</b><sub>real</sub> - <b>y</b><sub>pred</sub>|)/(2<sup>ord</sup> - 1).
+- *embedded_caller*: Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores embebidos (ver [integrators.F90](./integrators.F90#L649#L951)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|.
 
-- *embedded_caller* (**recomendado**): Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores embebidos (ver [integrators.F90](./integrators.F90#L529#L827)), incluyendo al integrador *Bulirsch_Stoer* (**recomendado** si se introduce un ϵ<sub>tol</sub> < 10<sup>-8</sup>, ver [bstoer.F90](./bstoer.F90#L18#L36)).
+- *BStoer_caller*:, Se utiliza el integrador *Bulirsch_Stoer* (ver [bstoer.F90](./bstoer.F90#L18#L62)).
 
 
 #### **Fuerzas involucradas**
-Esto se realiza en la líneas _356-360_ del archivo [tidall.F90](./tidall.F90#L356#L360).
+Esto se realiza en la líneas _358-362_ del archivo [tidall.F90](./tidall.F90#L358#L362).
 ``` fortran
 call dydtidal (y0, y1, 1, y01t, y10t)
 call dydtidal (y0, y2, 2, y02t, y20t)

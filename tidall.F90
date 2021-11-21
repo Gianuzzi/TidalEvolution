@@ -346,6 +346,8 @@ module tidall
             call get_from_big_y (y, y0, y1, y2)
 
             ynew = 0.
+            y01t = 0.
+            y02t = 0.
             y10t = 0.
             y20t = 0.
             y12g = 0.

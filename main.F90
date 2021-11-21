@@ -42,22 +42,23 @@ Q(3)   = 1.e5            ! [?]
 t0       = 0. * YR2DAY   ! [days]
 dt_min   = 1e-4 * YR2DAY ! [days] ![For fixed dt integrators]
 tf       = 5.e9 * YR2DAY ! [days]
-n_points = 5000          ! Approx N_output
 
 ! Integration conditions
 beta   = 0.95   ! Learning rate
 e_tol  = 1e-12  ! Approx Absolute e_calc (|Ysol - Ypred|)
 
 ! Output
-filename = "3_bodies"
+n_points = 5000        ! Approx N_output
+logsp    = TRUE        ! Log or equaly spaced points?
+filename = "3_bodies"  ! Filename
 !------------------------------------------------------
 
 !-------------- SET DERIVED PARAMETERS --------------
 ! Set almost everything
 call set_initial_params ((/a1, a2/), Q, alp, r, m, C, mu, mp, n, k2dt, TSk)
 
-! Calculated LOOP parameters
-Logt = exp (log (tf - t0) / (real (n_points, kind=8) - 1.))
+! Get LOOP checkpoints
+call get_t_outs (t0, tf, n_points, logsp, t_out)
 !------------------------------------------------------
 
 !------------------------ FILE ------------------------
@@ -119,19 +120,17 @@ aux1 = (r(2) / 0.462) * (m(1) / m(2))**(1/3.)
 aux2 = (r(3) / 0.462) * (m(1) / m(3))**(1/3.)
 
 ! Run variables
-t       = t0         ! Init time
-dt      = Logt       ! First dt
-t_add   = Logt       ! For incrementing t_out
-t_out   = t0 + t_add ! First output time
-dt_adap = dt         ! For adaptive step
-i       = 0          ! Counter
+t       = t0            ! Init time
+dt_adap = dt_min        ! For adaptive step
+dt      = t_out(1) - t0 ! This should be == 0
+i       = 0             ! Counter
 
 ! Write initial conditions
 write (*, "(I11, 3(E14.4, 1X))") i, t, dt, dt_adap
 write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
 
 ! Do loop
-do while (t < tf)
+do l = 2, n_points ! From 2 because 1 is the IC (t0)
     ! CHECK ENCOUNTERS
     !! s0, o0, a1, K1, s1, o1, H1, a2, K2, s2, o2, H2
     !!  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12
@@ -143,37 +142,33 @@ do while (t < tf)
         write (*,*) "End of RUN. [Encounter of planet 2]"
         exit
     end if
+
+    ! Update dt
+    dt = t_out(l) - t
     
     !!! Execute an integration method (uncomment/edit one of theese)
-    ! call implicit_caller (t, y, dt, dydtidall, euler_centred, max_iter, e_tol, dt_min, ynew)
-    ! call integ_caller (t, y, dt, dydtidall, rungek6, dt_min, ynew)
-    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, rungek4, 4, e_tol, beta, dt_min, dt, ynew)
-    call embedded_caller (t, y, dt_adap, dydtidall, Bulirsch_Stoer, e_tol, beta, dt_min, dt, ynew)
+    ! call integ_caller (t, y, dt_adap, dydtidall, Runge_Kutta4, dt, ynew)
+    ! call rk_half_step_caller (t, y, dt_adap, dydtidall, Runge_Kutta5, 5, e_tol, beta, dt_min, dt, ynew)
+    call embedded_caller (t, y, dt_adap, dydtidall, Dormand_Prince8_7, e_tol, beta, dt_min, dt, ynew)
+    ! call BStoer_caller (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
-    ynew(2)  = max (MIN_VAL, mod (ynew(2), TWOPI))
-    ynew(6)  = max (MIN_VAL, mod (ynew(6), TWOPI))
-    ynew(11) = max (MIN_VAL, mod (ynew(11), TWOPI))
+    ynew(2)  = mod (ynew(2), TWOPI)
+    ynew(6)  = mod (ynew(6), TWOPI)
+    ynew(11) = mod (ynew(11), TWOPI)
+
+    if (ynew(2) < MIN_VAL) ynew(2) = 0.
+    if (ynew(6) < MIN_VAL) ynew(6) = 0.
+    if (ynew(11) < MIN_VAL) ynew(11) = 0.
     
     ! Update parameters
     i  = i + 1
     t  = t + dt
     y  = ynew
-    
-    ! Output & dt
-    if (t .ge. t_out) then
-        do while (t_out .le. t)
-            t_add = t_add * Logt
-            t_out = t0 + t_add
-        end do
-        if ((t_out > tf) .or. ((abs (t_out - tf) / tf) .le. e_tol)) then
-            t_out = tf
-        end if
-        dt = t_out - t
-        write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
-        write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
-    end if
-    
+
+    ! Output    
+    write (*, "(I11, 3(E14.4, 1X))") i, t / YR2DAY, dt / YR2DAY, dt_adap / YR2DAY
+    write (10,*) y, n_f (y(3), mu(2)), n_f (y(8), mu(3)), t, dt, dt_adap
 end do
 
 !------------------------------------------------------
