@@ -149,8 +149,8 @@ do l = 2, n_points ! From 2 because 1 is the IC (t0)
     !!! Execute an integration method (uncomment/edit one of theese)
     ! call integ_caller (t, y, dt_adap, dydtidall, Runge_Kutta4, dt, ynew)
     ! call rk_half_step_caller (t, y, dt_adap, dydtidall, Runge_Kutta5, 5, e_tol, beta, dt_min, dt, ynew)
-    ! call embedded_caller (t, y, dt_adap, dydtidall, Fehlberg4_5, e_tol, beta, dt_min, dt, ynew)
-    call BStoer_caller (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
+    call embedded_caller (t, y, dt_adap, dydtidall, Dormand_Prince8_7, e_tol, beta, dt_min, dt, ynew)
+    ! call BStoer_caller (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
     
     !! Modulate and avoid too small angles
     ynew(2)  = mod (ynew(2), TWOPI)
