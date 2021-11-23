@@ -43,11 +43,11 @@ call embedded_caller (t, y, dt_adap, dydtidall, Dormand_Prince8_7, e_tol, beta, 
 ! call BStoer_caller (t, y, dt_adap, dydtidall, e_tol, dt_min, dt, ynew)
 ```
 
-- *integ_caller*: Se puede modificar el integrador (```Runge_Kutta4```) por cualquier otro que no sea embebido, entre los listados en el archivo [integrators.F90](./integrators.F90#L280#L647). El paso _dt_<sub>adap</sub> será constante, el igual al valor mínimo _dt_<sub>min</sub>.
+- *integ_caller*: Se puede modificar el integrador (```Runge_Kutta4```) por cualquier otro que no sea embebido, entre los listados en el archivo [integrators.F90](./integrators.F90#L314#L784). El paso _dt_<sub>adap</sub> será constante, el igual al valor mínimo _dt_<sub>min</sub>.
 
-- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```Runge_Kutta5``` -> O(5)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L953#L1002)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|/(2<sup>ord</sup> - 1).
+- *rk_half_step_caller*: Igual a *integ_caller*, pero al cambiar el integrador, también se debe introducir su orden (ej. ```Runge_Kutta5``` -> O(5)). En este caso el integrador intentará utilizar un paso de tiempo adaptativo _dt_<sub>adap</sub> adecuado, según la toleranca de error ϵ<sub>tol</sub> introducida (ver [integrators.F90](./integrators.F90#L1091#L1140)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|/(2<sup>ord</sup> - 1).
 
-- *embedded_caller*: Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores embebidos (ver [integrators.F90](./integrators.F90#L649#L951)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|.
+- *embedded_caller*: Similar a *rk_half_step_caller* (debido a que también calcula un paso de tiempo óptimo), pero solo se pueden introducir integradores embebidos (ver [integrators.F90](./integrators.F90#L786#L1089)). En este caso el error calculado será ϵ<sub>calc</sub> ≡ |1 - (<b>y</b><sub>aux</sub>/<b>y</b><sub>pred</sub>)|.
 
 - *BStoer_caller*:, Se utiliza el integrador *Bulirsch_Stoer* (ver [bstoer.F90](./bstoer.F90#L18#L62)).
 

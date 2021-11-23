@@ -5,23 +5,29 @@ module integrators
         procedure(dydt_i_tem), pointer, nopass :: f_i => null ()
     end type dydt_i
     ! For adaptive step and implicit (might be overwritten)
-    integer*4         :: MAX_N_ITER = 500
+    integer*4         :: MAX_N_ITER = 100
     real*8, parameter :: MAX_DT_FAC = 5., SAFE_LOW = 1e-300
     real*8            :: BETA = 0.9, E_TOL = 1e-8
 
     ! Aux Constants
-    real*8, parameter :: C1_3 = 1/3., C2_3 = C1_3 * 2
-    real*8, parameter :: C1_5 = 1/5.
-    real*8, parameter :: C1_6 = 1/6., C5_6 = C1_6 * 5
-    real*8, parameter :: C1_7 = 1/7.
-    real*8, parameter :: C1_9 = 1/9., C2_9 = C1_9 * 2, C8_9 = C1_9 * 8
-    real*8, parameter :: C1_12 = 1/12., C5_12 = C1_12 * 5
-    real*8, parameter :: C1_15 = 1/15., C4_15 = C1_15 * 4
-    real*8, parameter :: C1_18 = 1/18.
-    real*8, parameter :: C2_27 = 2/27.
-    real*8, parameter :: C2_45 = 2/45.
-    real*8, parameter :: C1_48 = 1/48.
+    real*8, parameter :: C1_3   = 1/3., C2_3 = C1_3 * 2
+    real*8, parameter :: C1_5   = 1/5.
+    real*8, parameter :: C1_6   = 1/6., C5_6 = C1_6 * 5
+    real*8, parameter :: C1_7   = 1/7.
+    real*8, parameter :: C1_9   = 1/9., C2_9 = C1_9 * 2, C4_9 = C1_9 * 4, C8_9 = C1_9 * 8
+    real*8, parameter :: C1_12  = 1/12., C5_12 = C1_12 * 5
+    real*8, parameter :: C1_15  = 1/15., C4_15 = C1_15 * 4
+    real*8, parameter :: C1_18  = 1/18., C5_18 = C1_18 * 5
+    real*8, parameter :: C2_27  = 2/27.
+    real*8, parameter :: C5_36  = 5/36.
+    real*8, parameter :: C2_45  = 2/45.
+    real*8, parameter :: C1_48  = 1/48.
     real*8, parameter :: C1_840 = 1/840., C41_840 = C1_840 * 41
+    real*8, parameter :: SQ3    = sqrt(3.)
+    real*8, parameter :: SQ15   = sqrt(15.)
+    real*8, parameter :: SQ3_6  = SQ3 * C1_6, SQ3_2 = SQ3_6 * 2
+    real*8, parameter :: SQ15_5 = SQ15 * 0.2, SQ15_10 = SQ15_5 * 2, SQ15_24 = SQ15/24.
+    real*8, parameter :: SQ15_30 = SQ15/30., SQ15_15 = SQ15_30 * 2
 
     abstract interface
 
@@ -78,6 +84,15 @@ module integrators
             integer*4, intent(out)                   :: osol, oaux
             real*8, dimension(size (y)), intent(out) :: ynew, yaux
         end subroutine embedded_tem
+
+        subroutine calc_rk (t, y, dt, dydt, kin, kout)
+            implicit none
+            real*8, intent(in)                                          :: t, dt
+            procedure(dydt_tem)                                         :: dydt
+            real*8, dimension(:, :), intent(in)                         :: kin
+            real*8, dimension(size (kin, 1)), intent(in)                :: y
+            real*8, dimension(size (kin, 1), size (kin,2)), intent(out) :: kout
+        end subroutine calc_rk 
 
         !---------------------------------------------------------------------------------------------
         ! WRAPPERS 
@@ -149,7 +164,7 @@ module integrators
 
         !! Implicit Methods Solver
 
-        subroutine solve_implicit (t, y, dt, dydt, kprev, cte, k)
+        subroutine solve_1k_implicit (t, y, dt, dydt, kprev, cte, k)
             implicit none
             real*8, intent(in)                       :: t, dt, cte
             real*8, dimension(:), intent(in)         :: y
@@ -167,7 +182,26 @@ module integrators
                     exit
                 end if
             end do
-        end subroutine solve_implicit
+        end subroutine solve_1k_implicit
+
+        subroutine solve_rk_implicit (t, y, dt, dydt, solver, rk)
+            implicit none
+            real*8, intent(in)                          :: t, dt
+            procedure(dydt_tem)                         :: dydt
+            real*8, dimension(:, :), intent(inout)      :: rk
+            real*8, dimension(size (rk,1), size (rk,2)) :: rkold
+            real*8, dimension(size (rk,1)), intent(in)  :: y
+            procedure(calc_rk)                          :: solver
+            integer*4                                   :: i
+
+            do i = 1, MAX_N_ITER
+                rkold = rk
+                call solver (t, y, dt, dydt, rkold, rk)
+                if (maxval( abs ((rkold - rk) / (rkold + SAFE_LOW))) .le. E_TOL) then
+                    exit
+                end if
+            end do
+        end subroutine solve_rk_implicit
 
         !! Runge Kutta Methods Solver
 
@@ -300,7 +334,7 @@ module integrators
 
             kaux = 0.
             aux  = 1.
-            call solve_implicit (t + dt, y, dt, dydt, kaux, aux, k1)
+            call solve_1k_implicit (t + dt, y, dt, dydt, kaux, aux, k1)
 
             ynew = y + dt * k1
         end subroutine Euler_back1
@@ -316,7 +350,7 @@ module integrators
 
             kaux = 0.
             aux  = 0.5
-            call solve_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
+            call solve_1k_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
 
             ynew = y + dt * k1
         end subroutine Euler_center2
@@ -333,7 +367,7 @@ module integrators
             k1   = dydt (t, y)
             kaux = k1 * 0.5
             aux  = 0.5
-            call solve_implicit (t + dt, y, dt, dydt, kaux, aux, k2)
+            call solve_1k_implicit (t + dt, y, dt, dydt, kaux, aux, k2)
 
             ynew = y + dt * (k1 + k2) * 0.5
         end subroutine Crank_Nicolson2
@@ -393,6 +427,23 @@ module integrators
             
             ynew = y + dt * (k1 + k2 * 3) * 0.25
         end subroutine Ralston2
+
+        subroutine Hammer_Hollingsworth2 (t, y, dt, dydt, ynew) ! Implicit
+            implicit none
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, dimension(size (y))              :: kaux, k1, k2
+            real*8                                   :: aux
+
+            k1 = dydt (t, y)
+            kaux = k1 * C1_3
+            aux  = C1_3
+            call solve_1k_implicit (t + dt * C2_3, y, dt, dydt, kaux, aux, k2)
+
+            ynew = y + dt * (k1 + k2 * 3) * 0.25
+        end subroutine Hammer_Hollingsworth2
         
         subroutine Kraaijevanger_Spijker2 (t, y, dt, dydt, ynew) ! Implicit
             implicit none
@@ -405,10 +456,10 @@ module integrators
 
             kaux = 0.
             aux  = 0.5
-            call solve_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
+            call solve_1k_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
             kaux = - k1 * 0.5
             aux  = 2.
-            call solve_implicit (t + dt * 1.5, y, dt, dydt, kaux, aux, k2)
+            call solve_1k_implicit (t + dt * 1.5, y, dt, dydt, kaux, aux, k2)
 
             ynew = y + dt * (- k1 + k2 * 3) * 0.5
         end subroutine Kraaijevanger_Spijker2
@@ -423,9 +474,9 @@ module integrators
             real*8, parameter                        :: aux = 0.25
 
             kaux = 0.
-            call solve_implicit (t + dt * 0.25, y, dt, dydt, kaux, aux, k1)
+            call solve_1k_implicit (t + dt * 0.25, y, dt, dydt, kaux, aux, k1)
             kaux = k1 * 0.5
-            call solve_implicit (t + dt * 0.75, y, dt, dydt, kaux, aux, k2)
+            call solve_1k_implicit (t + dt * 0.75, y, dt, dydt, kaux, aux, k2)
 
             ynew = y + dt * (k1 + k2) * 0.5
         end subroutine Qin_Zhang2
@@ -498,13 +549,12 @@ module integrators
             real*8, dimension(size (y)), intent(out) :: ynew
             real*8, dimension(size (y))              :: kaux, k1, k2
             real*8                                   :: aux
-            real*8, parameter                        :: sq3_6 = sqrt(3.) * C1_6
 
             kaux = 0.
-            aux  = 0.5 + sq3_6
-            call solve_implicit (t + dt * aux, y, dt, dydt, kaux, aux, k1)
-            kaux = - k1 * sq3_6 * 2
-            call solve_implicit (t + dt * (0.5 - sq3_6), y, dt, dydt, kaux, aux, k2)
+            aux  = 0.5 + SQ3_6
+            call solve_1k_implicit (t + dt * aux, y, dt, dydt, kaux, aux, k1)
+            kaux = - k1 * SQ3_6 * 2
+            call solve_1k_implicit (t + dt * (0.5 - SQ3_6), y, dt, dydt, kaux, aux, k2)
 
             ynew = y + dt * (k1 + k2) * 0.5
         end subroutine Crouzeix3
@@ -519,13 +569,13 @@ module integrators
             real*8, parameter                        :: aux = 0.5
 
             kaux = 0.
-            call solve_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
+            call solve_1k_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k1)
             kaux = k1 * C1_6
-            call solve_implicit (t + dt * C2_3, y, dt, dydt, kaux, aux, k2)
+            call solve_1k_implicit (t + dt * C2_3, y, dt, dydt, kaux, aux, k2)
             kaux = (- k1 + k2) * 0.5
-            call solve_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k3)
+            call solve_1k_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k3)
             kaux = ((k1 - k2) * 3 + k3) * 0.5
-            call solve_implicit (t + dt, y, dt, dydt, kaux, aux, k4)
+            call solve_1k_implicit (t + dt, y, dt, dydt, kaux, aux, k4)
 
             ynew = y + dt * (kaux + k4 * 0.5)
         end subroutine Runge_Kutta_implicit3
@@ -546,6 +596,23 @@ module integrators
             ynew = y + dt * (k1 * 0.17476028 - k2 * 0.55148066 + k3 * 1.20553560 + k4 * 0.17118478)
         end subroutine Ralston4
 
+        subroutine Lobatto4 (t, y, dt, dydt, ynew) ! Implicit
+            implicit none
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, dimension(size (y))              :: kaux, k1, k2, k3
+            real*8, parameter                        :: aux = 0.25
+
+            k1   = dydt (t, y)
+            kaux = k1 * 0.25
+            call solve_1k_implicit (t + dt * 0.5, y, dt, dydt, kaux, aux, k2)
+            k3 = dydt (t + dt, y + dt * k2)
+
+            ynew = y + dt * (k1 + k2 * 4 + k3) * C1_6
+        end subroutine Lobatto4
+
         subroutine Runge_Kutta4 (t, y, dt, dydt, ynew)
             implicit none
             real*8, intent(in)                       :: t, dt
@@ -564,6 +631,38 @@ module integrators
         
             ynew = y + dt * (k1 + (k2 + k3) * 2 + k4) * C1_6
         end subroutine Runge_Kutta4
+
+        subroutine Gauss_Legendre4 (t, y, dt, dydt, ynew) ! Implicit
+            implicit none
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, dimension(size (y), 2)           :: rk
+
+            rk = 0.
+            call solve_rk_implicit (t, y, dt, dydt, FunK, rk)
+
+            ynew = y + dt * (rk(:,1) + rk(:,2)) * 0.5
+        
+            contains
+                
+                subroutine FunK (t, y, dt, dydt, kin, kout)
+                    implicit none
+                    real*8, intent(in)                                          :: t, dt
+                    procedure(dydt_tem)                                         :: dydt
+                    real*8, dimension(:, :), intent(in)                         :: kin
+                    real*8, dimension(size (kin, 1)), intent(in)                :: y
+                    real*8, dimension(size (kin, 1), size (kin,2)), intent(out) :: kout
+
+                    kout(:,1) = dydt (t + dt * (0.5 - SQ3_6), y + dt * ( &
+                        & kin(:,1) * 0.25 + &
+                        & kin(:,2) * (0.25 - SQ3_6)))
+                    kout(:,2) = dydt (t + dt * (0.5 + SQ3_6), y + dt * ( &
+                        & kin(:,1) * (0.25 + SQ3_6) + &
+                        & kin(:,2) * 0.25))
+                end subroutine FunK
+        end subroutine Gauss_Legendre4 
 
         subroutine Runge_Kutta_four_oct4 (t, y, dt, dydt, ynew)
             implicit none
@@ -602,6 +701,44 @@ module integrators
         
             ynew = y + dt * ((k1 + k6) * 7 + (k3 + k5) * 32 + k4 * 12)/90.
         end subroutine Runge_Kutta5
+
+        subroutine Gauss_Legendre6 (t, y, dt, dydt, ynew) ! Implicit
+            implicit none
+            real*8, intent(in)                       :: t, dt
+            real*8, dimension(:), intent(in)         :: y
+            procedure(dydt_tem)                      :: dydt
+            real*8, dimension(size (y)), intent(out) :: ynew
+            real*8, dimension(size (y), 3)           :: rk
+
+            rk = 0.
+            call solve_rk_implicit (t, y, dt, dydt, FunK, rk)
+
+            ynew = y + dt * ((rk(:,1) + rk(:,3)) * 5 + rk(:,2) * 8) * C1_18
+        
+            contains
+                
+                subroutine FunK (t, y, dt, dydt, kin, kout)
+                    implicit none
+                    real*8, intent(in)                                          :: t, dt
+                    procedure(dydt_tem)                                         :: dydt
+                    real*8, dimension(:, :), intent(in)                         :: kin
+                    real*8, dimension(size (kin, 1)), intent(in)                :: y
+                    real*8, dimension(size (kin, 1), size (kin,2)), intent(out) :: kout
+
+                    kout(:,1) = dydt (t + dt * (1. - SQ15_5) * 0.5,  y + dt * (&
+                            & kin(:,1) * C5_36 + &
+                            & kin(:,2) * (C2_3 - SQ15_5) * C1_3 + &
+                            & kin(:,3) * (C5_36 - SQ15_30)))
+                    kout(:,2) = dydt (t + dt * 0.5, y + dt * (&
+                            & kin(:,1) * (C5_36 + SQ15_24)+ &
+                            & kin(:,2) * C2_9 + &
+                            & kin(:,3) * (C5_36 - SQ15_24)))
+                    kout(:,3) = dydt (t + dt * (1. + SQ15_5) * 0.5, y + dt * (&
+                            & kin(:,1) * (C5_36 + SQ15_30) + &
+                            & kin(:,2) * (C2_9 + SQ15_15) + &
+                            & kin(:,3) * C5_36))
+                end subroutine FunK
+        end subroutine Gauss_Legendre6 
 
         subroutine Runge_Kutta6 (t, y, dt, dydt, ynew)
             implicit none
@@ -871,22 +1008,23 @@ module integrators
             osol = 7
             oaux = 8
             
-            k1  = dydt (t,              y)
-            k2  = dydt (t + dt * C2_27, y + dt * k1 * C2_27)
-            k3  = dydt (t + dt * C1_9,  y + dt * (k1 + k2 * 3)/36.)
-            k4  = dydt (t + dt * C1_6,  y + dt * (k1 + k3 * 3)/24.)
-            k5  = dydt (t + dt * C5_12, y + dt * (k1 * C5_12 + (k4 - k3) * 1.5625))
-            k6  = dydt (t + dt * 0.5,   y + dt * (k1 * 0.05 + k4 * 0.25 + k5 * 0.2))
-            k7  = dydt (t + dt * C5_6,  y + dt * (- k1 * 25 + k4 * 125 - k5 * 260 + k6 * 250)/108.)
-            k8  = dydt (t + dt * C1_6,  y + dt * (k1 * 93 + k5 * 244 - k6 * 200 + k7 * 13)/900.)
-            k9  = dydt (t + dt * C2_3,  y + dt * (k1 * 2 + (- k4 * 795 + k5 * 1408 - k6 * 1070 + k7 * 67)/90. + k8 * 3))
-            k10 = dydt (t + dt * C1_3,  y + dt * (- k1 * 113.75 + k4 * 28.75 - k5 * 976 + k6 * 777.5 - k7 * 42.75 + &
-                                          & k8 * 382.5 - k9 * 11.25)/135.)
-            k11 = dydt (t + dt,         y + dt * (k1 * 2383 - k4 * 8525 + k5 * 17984 - k6 * 15050 + k7 * 2133 + &
-                                          & k8 * 2250 + k9 * 1125 + k10 * 1800)/4100.)
-            k12 = dydt (t,              y + dt * (((k1 - k7)/205. + ((- k6 + k10) * 2 + (- k8 + k9))/41.) * 3))
-            k13 = dydt (t + dt,         y + dt * ((- k1 * 1777 - k4 * 8525 + k5 * 17984 - k6 * 14450 + k7 * 2193 + &
-                                          & k8 * 2550 + k9 * 825 + k10 * 1900)/4100. + k12))
+            k1   = dydt (t,              y)
+            k2   = dydt (t + dt * C2_27, y + dt * k1 * C2_27)
+            k3   = dydt (t + dt * C1_9,  y + dt * (k1 + k2 * 3)/36.)
+            k4   = dydt (t + dt * C1_6,  y + dt * (k1 + k3 * 3)/24.)
+            k5   = dydt (t + dt * C5_12, y + dt * (k1 * C5_12 + (k4 - k3) * 1.5625))
+            k6   = dydt (t + dt * 0.5,   y + dt * (k1 + k4 * 5 + k5 * 4) * 0.02)
+            k7   = dydt (t + dt * C5_6,  y + dt * (- k1 * 25 + k4 * 125 - k5 * 260 + k6 * 250)/108.)
+            k8   = dydt (t + dt * C1_6,  y + dt * (k1 * 93 + k5 * 244 - k6 * 200 + k7 * 13)/900.)
+            k9   = dydt (t + dt * C2_3,  y + dt * (k1 * 2 + (- k4 * 795 + k5 * 1408 - k6 * 1070 + k7 * 67)/90. + k8 * 3))
+            k10  = dydt (t + dt * C1_3,  y + dt * ((- k1 * 91 + k4 * 23  + k6 * 622)/108. - k5 * 976/135. + &
+                                           & (- k7 * 19 + k8 * 170 - k9 * 5)/60.))
+            kaux = - k4 * 8525 + k5 * 17984
+            k11  = dydt (t + dt,         y + dt * (k1 * 2383 + kaux - k6 * 15050 + k7 * 2133 + &
+                                           & k8 * 2250 + k9 * 1125 + k10 * 1800)/4100.)
+            k12  = dydt (t,              y + dt * (((k1 - k7)/205. + ((- k6 + k10) * 2 + (- k8 + k9))/41.) * 3))
+            k13  = dydt (t + dt,         y + dt * ((- k1 * 1777 + kaux - k6 * 14450 + k7 * 2193 + &
+                                           & k8 * 2550 + k9 * 825 + k10 * 1900)/4100. + k12))
 
             kaux = k6 * 272 + (k7 + k8) * 216 + (k9 + k10) * 27
 
