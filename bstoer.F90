@@ -71,8 +71,8 @@ module bstoer
             real*8, intent(inout) :: x, hdid, hnext
             real*8, dimension(sizey), intent(inout) :: y
             real*8, dimension(sizey)                :: yerr, ysav, yseq, der
-            real*8, dimension(sizey * 2 - 1)        :: xpz
-            real*8, dimension(sizey, sizey * 2 - 1) :: qcolpz
+            real*8, dimension(kmaxx * 2)        :: xpz
+            real*8, dimension(sizey, kmaxx * 2) :: qcolpz
             integer*4, parameter :: kmaxx = 8
             real*8, parameter    :: safe1 = .25, safe2 = .7
             real*8, parameter    :: redmax = 1.e-5, redmin = .7
@@ -226,8 +226,9 @@ module bstoer
             real*8, dimension(sizey)                 :: d
             real*8, dimension(sizey), intent(in)     :: yest
             real*8, dimension(sizey), intent(inout)  :: dy, yz
-            real*8, dimension(sizey * 2 - 1), intent(inout)        :: x
-            real*8, dimension(sizey, sizey * 2 - 1), intent(inout) :: qcol
+            integer*4, parameter                     :: IEST_MAX=16
+            real*8, dimension(IEST_MAX), intent(inout)        :: x
+            real*8, dimension(sizey, IEST_MAX), intent(inout) :: qcol
             integer :: j, k1
             real*8  :: delta, f1, f2, q
 
